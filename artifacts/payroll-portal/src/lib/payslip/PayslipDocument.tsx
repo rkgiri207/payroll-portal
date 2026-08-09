@@ -104,7 +104,7 @@ function buildRows(record: PayslipRecord) {
 
   // Standard deductions
   if (record.pfEmployee != null)  deductions.push({ label: 'PF - Employee (12%)',       amount: record.pfEmployee });
-  if (record.pfEmployer != null)  deductions.push({ label: 'PF - Employer',              amount: record.pfEmployer });
+  if (record.pfEmployer != null)  deductions.push({ label: 'PF - Employer (12%)',         amount: record.pfEmployer });
   if (record.esiEmployee != null) deductions.push({ label: 'ESI - Employee (0.75%)',     amount: record.esiEmployee });
   if (record.esiEmployer != null) deductions.push({ label: 'ESI - Employer (3.25%)',     amount: record.esiEmployer });
   if (record.pt != null)          deductions.push({ label: 'PT',                         amount: record.pt });

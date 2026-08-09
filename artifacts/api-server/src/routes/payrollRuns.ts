@@ -3,16 +3,17 @@
  *   GET   /payroll-runs        — list runs
  *   GET   /payroll-runs/:id    — get run detail + records
  *   PATCH /payroll-runs/:id/cancel — cancel run
+ *
+ * NOTE: Records now store employee identity directly (no join to employees table).
  */
 import { Router, type IRouter, type Request, type Response } from 'express';
 import { db } from '@workspace/db';
 import {
   payrollRunsTable,
   payrollRecordsTable,
-  employeesTable,
   usersTable,
 } from '@workspace/db/schema';
-import { eq, desc, count, and, ilike } from 'drizzle-orm';
+import { eq, desc, count, and } from 'drizzle-orm';
 import { requireAuth } from '../middlewares/requireAuth';
 import { createAuditLog } from '../lib/audit';
 
@@ -25,9 +26,8 @@ router.get('/payroll-runs', requireAuth, async (req: Request, res: Response) => 
   const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '20'), 10)));
   const offset = (page - 1) * limit;
 
-  // Build base query
   const whereConditions = [];
-  if (status && ['DRAFT','VALIDATED','IMPORTED','CANCELLED'].includes(status)) {
+  if (status && ['DRAFT', 'VALIDATED', 'IMPORTED', 'CANCELLED'].includes(status)) {
     whereConditions.push(eq(payrollRunsTable.status, status as any));
   }
   const where = whereConditions.length > 0 ? and(...whereConditions) : undefined;
@@ -98,14 +98,17 @@ router.get('/payroll-runs/:id', requireAuth, async (req: Request, res: Response)
     return;
   }
 
-  // Fetch records with employee info
+  // Fetch records — employee info is stored directly on each record
   const records = await db
     .select({
       id: payrollRecordsTable.id,
       payrollRunId: payrollRecordsTable.payrollRunId,
-      employeeId: payrollRecordsTable.employeeId,
-      employeeCode: employeesTable.employeeCode,
-      employeeName: employeesTable.employeeName,
+      employeeCode: payrollRecordsTable.employeeCode,
+      employeeName: payrollRecordsTable.employeeName,
+      mobileNumber: payrollRecordsTable.mobileNumber,
+      email: payrollRecordsTable.email,
+      designation: payrollRecordsTable.designation,
+      branch: payrollRecordsTable.branch,
       basic: payrollRecordsTable.basic,
       da: payrollRecordsTable.da,
       hra: payrollRecordsTable.hra,
@@ -119,9 +122,8 @@ router.get('/payroll-runs/:id', requireAuth, async (req: Request, res: Response)
       additionalComponents: payrollRecordsTable.additionalComponents,
     })
     .from(payrollRecordsTable)
-    .leftJoin(employeesTable, eq(payrollRecordsTable.employeeId, employeesTable.id))
     .where(eq(payrollRecordsTable.payrollRunId, id))
-    .orderBy(employeesTable.employeeCode);
+    .orderBy(payrollRecordsTable.employeeCode);
 
   res.json({ ...run, records });
 });

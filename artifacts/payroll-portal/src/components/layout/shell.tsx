@@ -2,7 +2,6 @@ import { useEffect, ReactNode } from "react"
 import { Link, useLocation } from "wouter"
 import { 
   Building2, 
-  Users, 
   Banknote, 
   FileText, 
   Settings, 
@@ -18,7 +17,6 @@ import { useQueryClient } from "@tanstack/react-query"
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/employees", label: "Employees", icon: Users },
   { href: "/payroll", label: "Upload Payroll", icon: Banknote },
   { href: "/payroll/history", label: "Payroll History", icon: History },
   { href: "/payslips", label: "Payslips", icon: FileText },

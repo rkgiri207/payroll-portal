@@ -869,6 +869,16 @@ components:
           type: string
         employeeName:
           type: string
+        mobile:
+          type: string
+        email:
+          type: string
+        designation:
+          type: string
+        branch:
+          type: string
+        joiningDate:
+          type: string
         basic:
           type: string
         da:
@@ -919,8 +929,12 @@ components:
           type: ["string", "null"]
         employeeName:
           type: ["string", "null"]
-        employeeDbId:
-          type: ["number", "null"]
+        mobileNumber:
+          type: ["string", "null"]
+        designation:
+          type: ["string", "null"]
+        branch:
+          type: ["string", "null"]
         grossSalary:
           type: ["string", "null"]
         totalDeductions:
@@ -1072,18 +1086,26 @@ components:
 
     PayrollRecord:
       type: object
-      required: [id, payrollRunId, employeeId]
+      required: [id, payrollRunId, employeeCode, employeeName]
       properties:
         id:
           type: number
         payrollRunId:
           type: number
-        employeeId:
-          type: number
         employeeCode:
           type: string
         employeeName:
           type: string
+        mobileNumber:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        designation:
+          type: ["string", "null"]
+        branch:
+          type: ["string", "null"]
+        joiningDate:
+          type: ["string", "null"]
         basic:
           type: ["string", "null"]
         da:

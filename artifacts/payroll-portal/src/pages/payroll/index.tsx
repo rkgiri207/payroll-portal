@@ -26,13 +26,21 @@ import { cn } from '@/lib/utils';
 
 type Step = 1 | 2 | 3 | 4 | 5;
 
-// Required fields to map
+// Required fields — must be mapped before proceeding
 const REQUIRED_FIELDS = [
   { key: 'employeeId', label: 'Employee ID' },
-  { key: 'employeeName', label: 'Employee Name' }
+  { key: 'employeeName', label: 'Employee Name' },
 ];
 
-// Optional fields
+// Recommended fields — not blocking but used for WhatsApp delivery and payslips
+const RECOMMENDED_FIELDS = [
+  { key: 'mobile', label: 'Mobile' },
+  { key: 'designation', label: 'Designation' },
+  { key: 'branch', label: 'Branch' },
+  { key: 'joiningDate', label: 'Joining Date' },
+];
+
+// Payroll salary fields
 const OPTIONAL_FIELDS = [
   { key: 'basic', label: 'Basic' },
   { key: 'da', label: 'DA' },
@@ -43,7 +51,7 @@ const OPTIONAL_FIELDS = [
   { key: 'esi', label: 'ESI' },
   { key: 'tds', label: 'TDS' },
   { key: 'otherDeductions', label: 'Other Deductions' },
-  { key: 'netSalary', label: 'Net Salary' }
+  { key: 'netSalary', label: 'Net Salary' },
 ];
 
 export default function PayrollWizardPage() {
@@ -149,7 +157,7 @@ export default function PayrollWizardPage() {
       const newMapping: Record<string, string> = { ...savedMapping?.mapping };
       
       // Auto-suggest for empty ones
-      const allFields = [...REQUIRED_FIELDS, ...OPTIONAL_FIELDS];
+      const allFields = [...REQUIRED_FIELDS, ...RECOMMENDED_FIELDS, ...OPTIONAL_FIELDS];
       allFields.forEach(f => {
         if (!newMapping[f.key]) {
           const match = parseRes.headers.find(h => h.toLowerCase().replace(/[^a-z0-9]/g, '') === f.label.toLowerCase().replace(/[^a-z0-9]/g, ''));
@@ -234,7 +242,7 @@ export default function PayrollWizardPage() {
 
   // Render Helpers
   const isWorking = reqUrlMut.isPending || parseMut.isPending || validateMut.isPending || importMut.isPending;
-  const allFields = [...REQUIRED_FIELDS, ...OPTIONAL_FIELDS];
+  const allFields = [...REQUIRED_FIELDS, ...RECOMMENDED_FIELDS, ...OPTIONAL_FIELDS];
   const unmappedExcelHeaders = excelHeaders.filter(h => !Object.values(columnMapping).includes(h));
 
   return (
@@ -370,12 +378,14 @@ export default function PayrollWizardPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {allFields.map((field) => {
                   const isReq = REQUIRED_FIELDS.some(r => r.key === field.key);
+                  const isRec = RECOMMENDED_FIELDS.some(r => r.key === field.key);
                   return (
                     <div key={field.key} className="flex flex-col gap-2">
                       <Label className="flex items-center gap-2">
                         {field.label}
                         {isReq && <span className="text-red-500">*</span>}
                         {isReq && <Badge variant="outline" className="text-[10px] h-4 px-1">Required</Badge>}
+                        {isRec && <Badge variant="outline" className="text-[10px] h-4 px-1 text-blue-600 border-blue-300">Recommended</Badge>}
                       </Label>
                       <Select 
                         value={columnMapping[field.key] || 'none'} 
@@ -501,6 +511,7 @@ export default function PayrollWizardPage() {
                     <TableHead className="w-16">Row</TableHead>
                     <TableHead>Employee ID</TableHead>
                     <TableHead>Name</TableHead>
+                    <TableHead>Mobile</TableHead>
                     <TableHead className="text-right">Gross</TableHead>
                     <TableHead className="text-right">Deductions</TableHead>
                     <TableHead className="text-right">Net</TableHead>
@@ -513,6 +524,7 @@ export default function PayrollWizardPage() {
                       <TableCell>{row.rowIndex}</TableCell>
                       <TableCell className="font-medium">{row.employeeCode || '—'}</TableCell>
                       <TableCell>{row.employeeName || '—'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{row.mobileNumber || '—'}</TableCell>
                       <TableCell className="text-right">{formatINR(row.grossSalary)}</TableCell>
                       <TableCell className="text-right">{formatINR(row.totalDeductions)}</TableCell>
                       <TableCell className="text-right font-bold">{formatINR(row.netSalary)}</TableCell>
@@ -535,7 +547,7 @@ export default function PayrollWizardPage() {
                   ))}
                   {validationResult.rows.length > 100 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-4">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-4">
                         ...and {validationResult.rows.length - 100} more rows
                       </TableCell>
                     </TableRow>

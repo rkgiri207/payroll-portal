@@ -178,6 +178,9 @@ export default function PayrollRunDetailPage() {
             <TableRow>
               <TableHead className="whitespace-nowrap">Employee Code</TableHead>
               <TableHead className="whitespace-nowrap">Name</TableHead>
+              <TableHead className="whitespace-nowrap">Mobile</TableHead>
+              <TableHead className="whitespace-nowrap">Designation</TableHead>
+              <TableHead className="whitespace-nowrap">Branch</TableHead>
               <TableHead className="text-right whitespace-nowrap">Basic</TableHead>
               <TableHead className="text-right whitespace-nowrap">DA</TableHead>
               <TableHead className="text-right whitespace-nowrap">HRA</TableHead>
@@ -194,7 +197,7 @@ export default function PayrollRunDetailPage() {
           <TableBody>
             {run.records?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={16} className="h-32 text-center text-muted-foreground">
                   No records found in this run.
                 </TableCell>
               </TableRow>
@@ -205,6 +208,9 @@ export default function PayrollRunDetailPage() {
                   <TableRow key={record.id} className={run.status === 'CANCELLED' ? 'opacity-50' : ''}>
                     <TableCell className="font-medium">{record.employeeCode}</TableCell>
                     <TableCell>{record.employeeName}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{(record as any).mobileNumber || '—'}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{(record as any).designation || '—'}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{(record as any).branch || '—'}</TableCell>
                     <TableCell className="text-right">{formatINR(record.basic)}</TableCell>
                     <TableCell className="text-right">{formatINR(record.da)}</TableCell>
                     <TableCell className="text-right">{formatINR(record.hra)}</TableCell>

@@ -2,14 +2,18 @@
  * Payroll upload workflow routes:
  *   POST /payroll/request-upload-url   — presigned URL for Excel upload
  *   POST /payroll/parse-excel          — parse Excel, return sheets + headers
- *   POST /payroll/validate             — validate rows against employee master
+ *   POST /payroll/validate             — validate rows (no Employee Master lookup)
  *   POST /payroll/import               — create payroll run + records
  *   GET  /payroll/column-mapping       — get saved column mapping
  *   PUT  /payroll/column-mapping       — save column mapping
+ *
+ * IMPORTANT: The payroll Excel is the source of truth. There is NO Employee Master lookup.
+ * Employee information (code, name, mobile, designation, branch) is read directly from
+ * the uploaded Excel and stored on each payroll record.
  */
 import { Router, type IRouter, type Request, type Response } from 'express';
 import { db } from '@workspace/db';
-import { employeesTable, payrollRunsTable, payrollRecordsTable, payrollColumnMappingsTable } from '@workspace/db/schema';
+import { payrollRunsTable, payrollRecordsTable, payrollColumnMappingsTable } from '@workspace/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { requireAuth } from '../middlewares/requireAuth';
 import { createAuditLog } from '../lib/audit';
@@ -87,6 +91,7 @@ router.post('/payroll/parse-excel', requireAuth, async (req: Request, res: Respo
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /payroll/validate
+// No Employee Master lookup. Excel is the source of truth.
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/payroll/validate', requireAuth, async (req: Request, res: Response) => {
   const { objectPath, sheetName, columnMapping, payrollMonth, payrollYear } = req.body;
@@ -109,23 +114,11 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
     const [buffer] = await file.download();
     const parsed = parseExcelBuffer(buffer, sheetName);
 
-    // Build a set of all mapped Excel column names to detect unmapped
+    // Build a set of all mapped Excel column names to detect unmapped columns
     const mappedColumns = new Set(Object.values(columnMapping).filter(Boolean));
     const unmappedColumns = parsed.headers.filter(h => !mappedColumns.has(h));
 
-    // Load all active employee codes from master
-    const employees = await db.select({
-      id: employeesTable.id,
-      employeeCode: employeesTable.employeeCode,
-      employeeName: employeesTable.employeeName,
-      mobileNumber: employeesTable.mobileNumber,
-      email: employeesTable.email,
-      status: employeesTable.status,
-    }).from(employeesTable);
-
-    const employeeByCode = new Map(employees.map(e => [e.employeeCode.toUpperCase(), e]));
-
-    // Check for existing payroll run for this month/year
+    // Check for an existing payroll run for this month/year
     const [existingRun] = await db
       .select({ id: payrollRunsTable.id, status: payrollRunsTable.status })
       .from(payrollRunsTable)
@@ -141,7 +134,7 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
       ? `A payroll run for ${MONTH_NAMES[month - 1]} ${year} already exists (status: ${existingRun.status}).`
       : null;
 
-    // Validate rows
+    // Validate rows — no Employee Master lookup
     const seenCodes = new Set<string>();
     const duplicateIds: string[] = [];
     let totalGross = '0.00';
@@ -156,21 +149,27 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
       const errors: string[] = [];
       const warnings: string[] = [];
 
-      // Get mapped values
+      // ── Employee identity from Excel ────────────────────────────────────────
       const employeeCode = columnMapping.employeeId
         ? String(row[columnMapping.employeeId] ?? '').trim()
         : '';
       const employeeName = columnMapping.employeeName
         ? String(row[columnMapping.employeeName] ?? '').trim()
         : '';
-      const grossRaw = columnMapping.grossSalary ? row[columnMapping.grossSalary] : undefined;
-      const netRaw = columnMapping.netSalary ? row[columnMapping.netSalary] : undefined;
+      const mobileNumber = columnMapping.mobile
+        ? String(row[columnMapping.mobile] ?? '').trim()
+        : '';
+      const designation = columnMapping.designation
+        ? String(row[columnMapping.designation] ?? '').trim()
+        : '';
+      const branch = columnMapping.branch
+        ? String(row[columnMapping.branch] ?? '').trim()
+        : '';
 
-      // Required: Employee ID
+      // ── Required: Employee ID ───────────────────────────────────────────────
       if (!employeeCode) {
-        errors.push('Missing Employee ID');
+        errors.push('Employee ID is required');
       } else {
-        // Duplicate within file
         const codeUpper = employeeCode.toUpperCase();
         if (seenCodes.has(codeUpper)) {
           errors.push(`Duplicate Employee ID "${employeeCode}" in this file`);
@@ -182,36 +181,23 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
         }
       }
 
-      // Required: Employee Name
+      // ── Required: Employee Name ─────────────────────────────────────────────
       if (!employeeName) {
-        errors.push('Missing Employee Name');
+        errors.push('Employee Name is required');
       }
 
-      // Employee must exist in master
-      let employeeDbId: number | null = null;
-      if (employeeCode) {
-        const matched = employeeByCode.get(employeeCode.toUpperCase());
-        if (!matched) {
-          errors.push(`Employee ID "${employeeCode}" not found in Employee Master`);
-        } else {
-          employeeDbId = matched.id;
-          // Warnings for missing contact info
-          if (!matched.mobileNumber) {
-            warnings.push(`Employee "${employeeCode}" has no mobile number (required for WhatsApp delivery)`);
-          }
-          if (!matched.email) {
-            warnings.push(`Employee "${employeeCode}" has no email address`);
-          }
-          // Warn if inactive
-          if (matched.status === 'INACTIVE') {
-            warnings.push(`Employee "${employeeCode}" is marked as Inactive`);
-          }
-        }
+      // ── Recommended: Mobile number ──────────────────────────────────────────
+      // Missing mobile is a warning only — import still proceeds
+      if (!mobileNumber) {
+        warnings.push('Mobile number is missing. WhatsApp delivery will not be available for this employee.');
       }
 
-      // Validate numeric salary values
+      // ── Payroll salary fields ───────────────────────────────────────────────
+      const grossRaw = columnMapping.grossSalary ? row[columnMapping.grossSalary] : undefined;
+      const netRaw   = columnMapping.netSalary   ? row[columnMapping.netSalary]   : undefined;
+
       const grossSalary = normalizeSalaryValue(grossRaw);
-      const netSalary = normalizeSalaryValue(netRaw);
+      const netSalary   = normalizeSalaryValue(netRaw);
 
       if (grossRaw !== undefined && grossRaw !== '' && grossSalary === null) {
         errors.push(`Invalid gross salary value: "${grossRaw}"`);
@@ -220,21 +206,21 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
         errors.push(`Invalid net salary value: "${netRaw}"`);
       }
 
-      // Compute deductions for display
-      const pfRaw = columnMapping.pf ? row[columnMapping.pf] : undefined;
-      const esiRaw = columnMapping.esi ? row[columnMapping.esi] : undefined;
-      const tdsRaw = columnMapping.tds ? row[columnMapping.tds] : undefined;
+      // Compute total deductions for preview display
+      const pfRaw       = columnMapping.pf             ? row[columnMapping.pf]             : undefined;
+      const esiRaw      = columnMapping.esi            ? row[columnMapping.esi]            : undefined;
+      const tdsRaw      = columnMapping.tds            ? row[columnMapping.tds]            : undefined;
       const otherDedRaw = columnMapping.otherDeductions ? row[columnMapping.otherDeductions] : undefined;
-      const pf = normalizeSalaryValue(pfRaw);
-      const esi = normalizeSalaryValue(esiRaw);
-      const tds = normalizeSalaryValue(tdsRaw);
+      const pf      = normalizeSalaryValue(pfRaw);
+      const esi     = normalizeSalaryValue(esiRaw);
+      const tds     = normalizeSalaryValue(tdsRaw);
       const otherDed = normalizeSalaryValue(otherDedRaw);
       const totalDed = [pf, esi, tds, otherDed].reduce<string>((acc, v) => addDecimals(acc, v), '0.00');
 
-      // Running totals (only for valid gross/net)
-      if (grossSalary) totalGross = addDecimals(totalGross, grossSalary);
+      // Running totals (valid values only)
+      if (grossSalary) totalGross       = addDecimals(totalGross, grossSalary);
       if (totalDed !== '0.00') totalDeductions = addDecimals(totalDeductions, totalDed);
-      if (netSalary) totalNet = addDecimals(totalNet, netSalary);
+      if (netSalary)  totalNet          = addDecimals(totalNet, netSalary);
 
       let status: 'valid' | 'warning' | 'error' = 'valid';
       if (errors.length > 0) {
@@ -249,12 +235,14 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
 
       return {
         rowIndex,
-        employeeCode: employeeCode || null,
-        employeeName: employeeName || null,
-        employeeDbId,
-        grossSalary: grossSalary,
+        employeeCode:  employeeCode  || null,
+        employeeName:  employeeName  || null,
+        mobileNumber:  mobileNumber  || null,
+        designation:   designation   || null,
+        branch:        branch        || null,
+        grossSalary,
         totalDeductions: totalDed,
-        netSalary: netSalary,
+        netSalary,
         status,
         errors,
         warnings,
@@ -284,6 +272,7 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /payroll/import
+// No Employee Master lookup. Employee identity is stored directly on the record.
 // ─────────────────────────────────────────────────────────────────────────────
 router.post('/payroll/import', requireAuth, async (req: Request, res: Response) => {
   const { objectPath, fileName, sheetName, columnMapping, payrollMonth, payrollYear } = req.body;
@@ -294,7 +283,7 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
   }
 
   const month = parseInt(String(payrollMonth), 10);
-  const year = parseInt(String(payrollYear), 10);
+  const year  = parseInt(String(payrollYear), 10);
 
   try {
     // Parse Excel again (authoritative server-side parse)
@@ -302,16 +291,18 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
     const [buffer] = await file.download();
     const parsed = parseExcelBuffer(buffer, sheetName);
 
-    // Load employee master
-    const employees = await db.select().from(employeesTable);
-    const employeeByCode = new Map(employees.map(e => [e.employeeCode.toUpperCase(), e]));
-
-    // Known mapped column names for additional component detection
+    // Known mapped column names — used to detect additional/unmapped columns
     const knownMappedCols = new Set(Object.values(columnMapping).filter(Boolean));
 
     // Build insert data for each row
     const recordsToInsert: Array<{
-      employeeId: number;
+      employeeCode: string;
+      employeeName: string;
+      mobileNumber: string | null;
+      email: string | null;
+      designation: string | null;
+      branch: string | null;
+      joiningDate: string | null;
       basic: string | null;
       da: string | null;
       hra: string | null;
@@ -332,12 +323,35 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
     const importErrors: string[] = [];
 
     for (const row of parsed.rows) {
+      // ── Employee identity from Excel ─────────────────────────────────────
       const employeeCode = columnMapping.employeeId
         ? String(row[columnMapping.employeeId] ?? '').trim()
         : '';
+      const employeeName = columnMapping.employeeName
+        ? String(row[columnMapping.employeeName] ?? '').trim()
+        : '';
+      const mobileNumber = columnMapping.mobile
+        ? String(row[columnMapping.mobile] ?? '').trim() || null
+        : null;
+      const email = columnMapping.email
+        ? String(row[columnMapping.email] ?? '').trim() || null
+        : null;
+      const designation = columnMapping.designation
+        ? String(row[columnMapping.designation] ?? '').trim() || null
+        : null;
+      const branch = columnMapping.branch
+        ? String(row[columnMapping.branch] ?? '').trim() || null
+        : null;
+      const joiningDate = columnMapping.joiningDate
+        ? String(row[columnMapping.joiningDate] ?? '').trim() || null
+        : null;
 
       if (!employeeCode) {
-        importErrors.push(`Row is missing Employee ID`);
+        importErrors.push('A row is missing Employee ID');
+        continue;
+      }
+      if (!employeeName) {
+        importErrors.push(`Employee ID "${employeeCode}": Employee Name is required`);
         continue;
       }
 
@@ -348,27 +362,22 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
       }
       seenCodes.add(codeUpper);
 
-      const emp = employeeByCode.get(codeUpper);
-      if (!emp) {
-        importErrors.push(`Employee ID "${employeeCode}" not found in Employee Master`);
-        continue;
-      }
+      // ── Salary fields ───────────────────────────────────────────────────
+      const get = (field: string | undefined) =>
+        field ? normalizeSalaryValue(row[field]) : null;
 
-      const get = (field: keyof typeof columnMapping) =>
-        columnMapping[field] ? normalizeSalaryValue(row[columnMapping[field]!]) : null;
+      const basic          = get(columnMapping.basic);
+      const da             = get(columnMapping.da);
+      const hra            = get(columnMapping.hra);
+      const otherEarnings  = get(columnMapping.otherEarnings);
+      const grossSalary    = get(columnMapping.grossSalary);
+      const pf             = get(columnMapping.pf);
+      const esi            = get(columnMapping.esi);
+      const tds            = get(columnMapping.tds);
+      const otherDeductions = get(columnMapping.otherDeductions);
+      const netSalary      = get(columnMapping.netSalary);
 
-      const basic = get('basic');
-      const da = get('da');
-      const hra = get('hra');
-      const otherEarnings = get('otherEarnings');
-      const grossSalary = get('grossSalary');
-      const pf = get('pf');
-      const esi = get('esi');
-      const tds = get('tds');
-      const otherDeductions = get('otherDeductions');
-      const netSalary = get('netSalary');
-
-      // Capture additional/unmapped columns
+      // ── Additional/unmapped columns → additionalComponents JSONB ────────
       const additionalComponents: Record<string, string> = {};
       for (const [colName, value] of Object.entries(row)) {
         if (!knownMappedCols.has(colName)) {
@@ -379,14 +388,20 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
         }
       }
 
-      // Totals
-      if (grossSalary) totalGross = addDecimals(totalGross, grossSalary);
-      if (netSalary) totalNet = addDecimals(totalNet, netSalary);
+      // Running totals
+      if (grossSalary)  totalGross = addDecimals(totalGross, grossSalary);
+      if (netSalary)    totalNet   = addDecimals(totalNet, netSalary);
       const rowDed = [pf, esi, tds, otherDeductions].reduce<string>((acc, v) => addDecimals(acc, v), '0.00');
       if (rowDed !== '0.00') totalDeductions = addDecimals(totalDeductions, rowDed);
 
       recordsToInsert.push({
-        employeeId: emp.id,
+        employeeCode,
+        employeeName,
+        mobileNumber,
+        email,
+        designation,
+        branch,
+        joiningDate,
         basic,
         da,
         hra,
@@ -442,7 +457,7 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
       return run.id;
     });
 
-    // Save the column mapping for future use
+    // Save the column mapping for future uploads
     const existingMapping = await db.select().from(payrollColumnMappingsTable).limit(1);
     if (existingMapping.length > 0) {
       await db.update(payrollColumnMappingsTable).set({ mapping: columnMapping });

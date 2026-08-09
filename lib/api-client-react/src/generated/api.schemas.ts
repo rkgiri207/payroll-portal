@@ -201,6 +201,11 @@ export interface ParseExcelResult {
 export interface ColumnMapping {
   employeeId?: string;
   employeeName?: string;
+  mobile?: string;
+  email?: string;
+  designation?: string;
+  branch?: string;
+  joiningDate?: string;
   basic?: string;
   da?: string;
   hra?: string;
@@ -245,7 +250,11 @@ export interface PayrollValidationRow {
   /** @nullable */
   employeeName?: string | null;
   /** @nullable */
-  employeeDbId?: number | null;
+  mobileNumber?: string | null;
+  /** @nullable */
+  designation?: string | null;
+  /** @nullable */
+  branch?: string | null;
   /** @nullable */
   grossSalary?: string | null;
   /** @nullable */
@@ -348,9 +357,18 @@ export type PayrollRecordAdditionalComponents = {[key: string]: string} | null;
 export interface PayrollRecord {
   id: number;
   payrollRunId: number;
-  employeeId: number;
-  employeeCode?: string;
-  employeeName?: string;
+  employeeCode: string;
+  employeeName: string;
+  /** @nullable */
+  mobileNumber?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  designation?: string | null;
+  /** @nullable */
+  branch?: string | null;
+  /** @nullable */
+  joiningDate?: string | null;
   /** @nullable */
   basic?: string | null;
   /** @nullable */

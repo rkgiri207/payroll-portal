@@ -9,9 +9,18 @@ import type { PayrollRecordAdditionalComponents } from './payrollRecordAdditiona
 export interface PayrollRecord {
   id: number;
   payrollRunId: number;
-  employeeId: number;
-  employeeCode?: string;
-  employeeName?: string;
+  employeeCode: string;
+  employeeName: string;
+  /** @nullable */
+  mobileNumber?: string | null;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  designation?: string | null;
+  /** @nullable */
+  branch?: string | null;
+  /** @nullable */
+  joiningDate?: string | null;
   /** @nullable */
   basic?: string | null;
   /** @nullable */

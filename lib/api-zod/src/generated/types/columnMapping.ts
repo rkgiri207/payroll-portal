@@ -8,6 +8,11 @@
 export interface ColumnMapping {
   employeeId?: string;
   employeeName?: string;
+  mobile?: string;
+  email?: string;
+  designation?: string;
+  branch?: string;
+  joiningDate?: string;
   basic?: string;
   da?: string;
   hra?: string;

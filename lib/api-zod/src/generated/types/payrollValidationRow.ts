@@ -13,7 +13,11 @@ export interface PayrollValidationRow {
   /** @nullable */
   employeeName?: string | null;
   /** @nullable */
-  employeeDbId?: number | null;
+  mobileNumber?: string | null;
+  /** @nullable */
+  designation?: string | null;
+  /** @nullable */
+  branch?: string | null;
   /** @nullable */
   grossSalary?: string | null;
   /** @nullable */

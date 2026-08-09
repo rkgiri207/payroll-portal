@@ -1,0 +1,440 @@
+We need to simplify Stage 2 based on the actual purpose of this application.
+
+IMPORTANT:
+Do NOT rebuild the application from scratch.
+Do NOT modify the working Stage 1 authentication, company settings, branding, or audit foundation unnecessarily.
+
+The application is NOT intended to be a full HR/employee management system.
+
+The core purpose is:
+
+Payroll Excel
+→ Validate
+→ Preview
+→ Import payroll
+→ Generate individual payslips
+→ Create secure payslip links
+→ Share via WhatsApp
+
+==================================================
+REMOVE EMPLOYEE MASTER DEPENDENCY
+==================================================
+
+The separate Employee Master module is NOT required.
+
+Remove the Employee Master workflow from the application.
+
+Do NOT require administrators to manually create employees before uploading payroll.
+
+Do NOT require payroll Excel Employee IDs to already exist in an Employee Master table.
+
+Do NOT block payroll import because an employee does not exist in a separate employee table.
+
+The uploaded payroll Excel should be the source of employee/payroll information for each payroll run.
+
+==================================================
+WHAT TO DO WITH THE EXISTING EMPLOYEES MODULE
+==================================================
+
+Remove the "Employees" item from the main navigation.
+
+Remove the Employee Master screens from the normal user workflow.
+
+Do not delete historical payroll data that may already have been imported.
+
+If the existing database contains an employees table that is no longer required, do not immediately drop it if doing so could affect existing data or migrations.
+
+Instead:
+
+- Remove its dependency from payroll import.
+- Keep it temporarily if required for backward compatibility.
+- Document that it is no longer used by the payroll workflow.
+
+Clean up unused frontend components/routes where safe.
+
+==================================================
+NEW PAYROLL DATA MODEL
+==================================================
+
+A payroll record should belong directly to a Payroll Run.
+
+Conceptually:
+
+Payroll Run
+    ↓
+Payroll Records
+    ├── Employee information
+    └── Payroll information
+
+Each payroll record should contain the employee information required for that payroll period.
+
+At minimum:
+
+- employee_id/code
+- employee_name
+- mobile_number
+- email (if present)
+- designation (if present)
+- branch (if present)
+- joining_date (if present)
+
+and payroll fields such as:
+
+- basic
+- da
+- hra
+- other_earnings
+- gross_salary
+- pf
+- esi
+- tds
+- other_deductions
+- net_salary
+- additional_components
+
+The exact fields available will depend on the uploaded Excel.
+
+Do NOT require all optional fields to exist.
+
+==================================================
+EXCEL IS THE SOURCE OF TRUTH
+==================================================
+
+The payroll Excel file is the source of truth for that payroll run.
+
+For example, if the Excel contains:
+
+Employee ID
+Employee Name
+Mobile
+Designation
+Branch
+Basic
+DA
+HRA
+Conveyance
+Gross
+PF
+ESI
+TDS
+Other Deduction
+Net
+
+all of these should be imported into the payroll record.
+
+There is no separate employee-master lookup.
+
+==================================================
+EMPLOYEE ID
+==================================================
+
+Employee ID should still be strongly recommended because it is useful for identifying employees and historical records.
+
+However:
+
+- It does NOT need to exist in another table.
+- Duplicate Employee IDs within the same payroll file should still be detected.
+- A missing Employee ID should be a validation error if Employee ID is designated as a required column.
+- Do not attempt to look up the employee in another database table.
+
+The payroll record itself stores the Employee ID.
+
+==================================================
+MOBILE NUMBER
+==================================================
+
+Mobile number should be imported directly from the Excel if available.
+
+This will later be used for WhatsApp delivery.
+
+If mobile number is missing:
+
+- Do NOT block payroll import.
+- Show a WARNING.
+
+Example:
+
+"Mobile number is missing. WhatsApp delivery will not be available for this employee."
+
+This employee must still be imported and their payslip must still be generated later.
+
+==================================================
+PAYROLL IMPORT WORKFLOW
+==================================================
+
+The workflow should now be:
+
+STEP 1
+Upload Excel
+
+STEP 2
+Select payroll month/year
+
+STEP 3
+Select worksheet if multiple worksheets exist
+
+STEP 4
+Map Excel columns
+
+STEP 5
+Preview and validate
+
+STEP 6
+Confirm import
+
+STEP 7
+Create Payroll Run
+
+No Employee Master matching step should exist.
+
+==================================================
+COLUMN MAPPING
+==================================================
+
+Continue supporting flexible Excel column mapping.
+
+Required:
+
+- Employee ID
+- Employee Name
+
+Recommended but not necessarily required:
+
+- Mobile
+- Designation
+- Branch
+
+Payroll fields:
+
+- Basic
+- DA
+- HRA
+- Other Earnings
+- Gross Salary
+- PF
+- ESI
+- TDS
+- Other Deductions
+- Net Salary
+
+Additional columns must be preserved as additional_components.
+
+Do not reject an Excel file merely because it contains additional salary components.
+
+==================================================
+VALIDATION
+==================================================
+
+Blocking errors:
+
+- Invalid Excel file
+- Required Employee ID column missing
+- Required Employee Name column missing
+- Blank Employee ID
+- Blank Employee Name
+- Duplicate Employee ID within the same payroll run
+- Invalid numeric payroll values
+- Required column mapping missing
+
+Warnings:
+
+- Mobile number missing
+- Email missing
+- Optional salary field missing
+- Additional/unmapped columns present
+
+Do NOT generate errors such as:
+
+"Employee ID not found"
+
+because there is no Employee Master lookup anymore.
+
+==================================================
+IMPORTANT BUG FIX
+==================================================
+
+The current application has reported this runtime error:
+
+"Cannot read properties of undefined (reading 'employeeId')"
+
+Fix this as part of this refactoring.
+
+The payroll workflow must never assume that an employee object exists in a separate Employee Master.
+
+Remove any code that does something equivalent to:
+
+employee.employeeId
+
+when employee may be undefined.
+
+Use the actual normalized payroll record instead.
+
+For example, the payroll record's employee ID should come from the normalized imported Excel row.
+
+All preview, validation and import code must safely handle missing values.
+
+A missing Employee ID must produce a user-friendly validation error, not a JavaScript runtime exception.
+
+==================================================
+PAYROLL HISTORY
+==================================================
+
+Keep Payroll History.
+
+Each Payroll Run should show:
+
+- Payroll month
+- Payroll year
+- Employee count
+- Total gross
+- Total deductions
+- Total net
+- Uploaded by
+- Upload date
+- Status
+
+Opening a payroll run should show the individual payroll records imported from that Excel.
+
+==================================================
+IMPORTANT: DO NOT CALCULATE SALARY
+==================================================
+
+The application must NOT calculate:
+
+- Basic
+- DA
+- HRA
+- Gross
+- PF
+- ESI
+- TDS
+- deductions
+- Net salary
+
+These are supplied by the payroll Excel.
+
+The application only imports and preserves the values.
+
+==================================================
+FUTURE STAGE COMPATIBILITY
+==================================================
+
+The payroll record structure must support the next stage:
+
+STAGE 3:
+Individual payslip PDF generation.
+
+Stage 3 will need:
+
+- Employee name
+- Employee ID
+- Designation
+- Branch
+- Payroll month/year
+- All earnings
+- Gross salary
+- All deductions
+- Net salary
+- Company name
+- Company logo
+
+Therefore ensure all imported employee/payroll information is retained with each payroll record.
+
+==================================================
+DO NOT IMPLEMENT YET
+==================================================
+
+Do NOT implement:
+
+- Payslip PDF generation
+- Payslip design
+- 7-day secure links
+- WhatsApp API
+- Meta integration
+- WhatsApp template
+- Bulk WhatsApp sending
+- Email delivery
+- Statutory reports
+- Employee login
+- HR functions
+
+These belong to later stages.
+
+==================================================
+TESTING
+==================================================
+
+After refactoring, test the payroll workflow using a sample Excel containing:
+
+Employee ID
+Employee Name
+Mobile
+Designation
+Branch
+Basic
+DA
+HRA
+Conveyance
+Gross
+PF
+ESI
+TDS
+Other Deduction
+Net
+
+Use at least 3 employees.
+
+Verify:
+
+1. Excel uploads.
+2. Column mapping works.
+3. Preview works.
+4. Employee information is displayed directly from Excel.
+5. No Employee Master lookup occurs.
+6. No "employee not found" error occurs.
+7. Additional salary components such as Conveyance are preserved.
+8. Missing mobile number produces only a warning.
+9. Duplicate Employee ID is detected.
+10. Missing Employee ID is a validation error.
+11. Invalid salary values are validation errors.
+12. Payroll totals are correct.
+13. Payroll import succeeds after validation.
+14. Payroll History displays the run.
+15. Individual payroll records contain all imported information.
+16. The application produces no "Cannot read properties of undefined (reading 'employeeId')" error.
+
+Also test the application with an Excel file where the Employee Master would have contained no corresponding records.
+
+The payroll import must still work because there is no Employee Master dependency.
+
+==================================================
+DATABASE SAFETY
+==================================================
+
+Do not delete existing payroll records.
+
+Do not perform destructive database migrations without verifying their effect.
+
+If schema changes are necessary:
+
+- Create safe migrations.
+- Preserve existing data.
+- Keep backward compatibility where practical.
+
+==================================================
+FINAL REPORT
+==================================================
+
+After completing the changes, report:
+
+1. What Employee Master functionality was removed.
+2. What database changes were made.
+3. How payroll records now store employee information.
+4. How the employeeId runtime error was fixed.
+5. Files changed.
+6. Tests performed.
+7. Confirmation that the payroll workflow works without an Employee Master.
+8. Any remaining technical issues.
+
+Do not proceed to Stage 3.
+Stop after this refactoring and Stage 2 validation are complete.

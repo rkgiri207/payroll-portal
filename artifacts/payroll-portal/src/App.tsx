@@ -9,7 +9,6 @@ import DashboardPage from '@/pages/dashboard';
 import SettingsPage from '@/pages/settings';
 import PlaceholderPage from '@/pages/placeholder';
 
-import EmployeesPage from '@/pages/employees/index';
 import PayrollWizardPage from '@/pages/payroll/index';
 import PayrollHistoryPage from '@/pages/payroll/history';
 import PayrollRunDetailPage from '@/pages/payroll/run-detail';
@@ -50,7 +49,6 @@ function Router() {
           <Switch>
             <Route path="/" component={DashboardPage} />
             <Route path="/settings" component={SettingsPage} />
-            <Route path="/employees" component={EmployeesPage} />
             <Route path="/payroll" component={PayrollWizardPage} />
             <Route path="/payroll/history" component={PayrollHistoryPage} />
             <Route path="/payroll/runs/:id" component={PayrollRunDetailPage} />

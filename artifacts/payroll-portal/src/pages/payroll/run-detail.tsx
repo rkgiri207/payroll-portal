@@ -18,7 +18,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ArrowLeft, XCircle } from 'lucide-react';
+import { ArrowLeft, FileDown, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -111,6 +111,15 @@ export default function PayrollRunDetailPage() {
           </p>
         </div>
         
+        {run.status !== 'CANCELLED' && (
+          <Button variant="outline" asChild>
+            <Link href={`/payslips?runId=${id}`}>
+              <FileDown className="mr-2 h-4 w-4" />
+              View Payslips
+            </Link>
+          </Button>
+        )}
+
         {run.status !== 'CANCELLED' && (
           <AlertDialog>
             <AlertDialogTrigger asChild>

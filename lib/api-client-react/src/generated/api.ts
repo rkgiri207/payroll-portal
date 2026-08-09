@@ -33,6 +33,7 @@ import type {
   EmployeeStatusInput,
   EmployeeUpdate,
   GetAuditLogsParams,
+  GetPayslipStatuses200,
   HealthStatus,
   ListEmployeesParams,
   ListPayrollRunsParams,
@@ -47,6 +48,8 @@ import type {
   PayrollUploadUrlRequest,
   PayrollValidationInput,
   PayrollValidationResult,
+  PayslipStatusBatchUpdate,
+  SavePayslipStatuses200,
   SuccessResponse,
   UploadUrlRequest,
   UploadUrlResponse
@@ -522,6 +525,83 @@ export const useUpdateCompanySettings = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getUpdateCompanySettingsMutationOptions(options));
     }
+
+export const getGetCompanyLogoUrl = () => {
+
+
+
+
+  return `/api/company-settings/logo`
+}
+
+/**
+ * @summary Download company logo (binary)
+ */
+export const getCompanyLogo = async ( options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetCompanyLogoUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCompanyLogoQueryKey = () => {
+    return [
+    `/api/company-settings/logo`
+    ] as const;
+    }
+
+
+export const getGetCompanyLogoQueryOptions = <TData = Awaited<ReturnType<typeof getCompanyLogo>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompanyLogo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCompanyLogoQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCompanyLogo>>> = ({ signal }) => getCompanyLogo({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCompanyLogo>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCompanyLogoQueryResult = NonNullable<Awaited<ReturnType<typeof getCompanyLogo>>>
+export type GetCompanyLogoQueryError = ErrorType<void>
+
+
+/**
+ * @summary Download company logo (binary)
+ */
+
+export function useGetCompanyLogo<TData = Awaited<ReturnType<typeof getCompanyLogo>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompanyLogo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCompanyLogoQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getRemoveCompanyLogoUrl = () => {
 
@@ -1871,6 +1951,155 @@ export function useGetPayrollRun<TData = Awaited<ReturnType<typeof getPayrollRun
 
 
 
+
+export const getGetPayslipStatusesUrl = (id: number,) => {
+
+
+
+
+  return `/api/payroll-runs/${id}/payslip-statuses`
+}
+
+/**
+ * @summary Get payslip generation statuses for a run
+ */
+export const getPayslipStatuses = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<GetPayslipStatuses200> => {
+
+  return customFetch<GetPayslipStatuses200>(getGetPayslipStatusesUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPayslipStatusesQueryKey = (id: number,) => {
+    return [
+    `/api/payroll-runs/${id}/payslip-statuses`
+    ] as const;
+    }
+
+
+export const getGetPayslipStatusesQueryOptions = <TData = Awaited<ReturnType<typeof getPayslipStatuses>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPayslipStatuses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPayslipStatusesQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPayslipStatuses>>> = ({ signal }) => getPayslipStatuses(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPayslipStatuses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPayslipStatusesQueryResult = NonNullable<Awaited<ReturnType<typeof getPayslipStatuses>>>
+export type GetPayslipStatusesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get payslip generation statuses for a run
+ */
+
+export function useGetPayslipStatuses<TData = Awaited<ReturnType<typeof getPayslipStatuses>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPayslipStatuses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPayslipStatusesQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSavePayslipStatusesUrl = (id: number,) => {
+
+
+
+
+  return `/api/payroll-runs/${id}/payslip-statuses`
+}
+
+/**
+ * @summary Bulk-upsert payslip generation statuses
+ */
+export const savePayslipStatuses = async (id: number,
+    payslipStatusBatchUpdate: PayslipStatusBatchUpdate, options?: Parameters<typeof customFetch>[1]): Promise<SavePayslipStatuses200> => {
+
+  return customFetch<SavePayslipStatuses200>(getSavePayslipStatusesUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(payslipStatusBatchUpdate)
+  }
+);}
+
+
+
+
+
+export const getSavePayslipStatusesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof savePayslipStatuses>>, TError,{id: number;data: BodyType<PayslipStatusBatchUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof savePayslipStatuses>>, TError,{id: number;data: BodyType<PayslipStatusBatchUpdate>}, TContext> => {
+
+const mutationKey = ['savePayslipStatuses'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof savePayslipStatuses>>, {id: number;data: BodyType<PayslipStatusBatchUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  savePayslipStatuses(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SavePayslipStatusesMutationResult = NonNullable<Awaited<ReturnType<typeof savePayslipStatuses>>>
+    export type SavePayslipStatusesMutationBody = BodyType<PayslipStatusBatchUpdate>
+    export type SavePayslipStatusesMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Bulk-upsert payslip generation statuses
+ */
+export const useSavePayslipStatuses = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof savePayslipStatuses>>, TError,{id: number;data: BodyType<PayslipStatusBatchUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof savePayslipStatuses>>,
+        TError,
+        {id: number;data: BodyType<PayslipStatusBatchUpdate>},
+        TContext
+      > => {
+      return useMutation(getSavePayslipStatusesMutationOptions(options));
+    }
 
 export const getCancelPayrollRunUrl = (id: number,) => {
 

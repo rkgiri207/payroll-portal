@@ -7,11 +7,11 @@ import { LayoutShell } from '@/components/layout/shell';
 import LoginPage from '@/pages/login';
 import DashboardPage from '@/pages/dashboard';
 import SettingsPage from '@/pages/settings';
-import PlaceholderPage from '@/pages/placeholder';
 
 import PayrollWizardPage from '@/pages/payroll/index';
 import PayrollHistoryPage from '@/pages/payroll/history';
 import PayrollRunDetailPage from '@/pages/payroll/run-detail';
+import PayslipsPage from '@/pages/payslips/index';
 
 import {
   Route,
@@ -52,12 +52,7 @@ function Router() {
             <Route path="/payroll" component={PayrollWizardPage} />
             <Route path="/payroll/history" component={PayrollHistoryPage} />
             <Route path="/payroll/runs/:id" component={PayrollRunDetailPage} />
-            <Route path="/payslips">
-              <PlaceholderPage 
-                title="Payslips" 
-                description="Generate, review, and distribute employee payslips."
-              />
-            </Route>
+            <Route path="/payslips" component={PayslipsPage} />
             <Route component={NotFound} />
           </Switch>
         </LayoutShell>

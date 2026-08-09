@@ -8,6 +8,7 @@ import storageRouter from './storage';
 import employeesRouter from './employees';
 import payrollRouter from './payroll';
 import payrollRunsRouter from './payrollRuns';
+import payslipsRouter from './payslips';
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use(storageRouter);
 router.use(employeesRouter);
 router.use(payrollRouter);
 router.use(payrollRunsRouter);
+router.use(payslipsRouter);
 
 export default router;

@@ -406,6 +406,44 @@ export interface PayrollRecord {
   additionalComponents?: PayrollRecordAdditionalComponents;
 }
 
+export type PayslipStatusStatus = typeof PayslipStatusStatus[keyof typeof PayslipStatusStatus];
+
+
+export const PayslipStatusStatus = {
+  NOT_GENERATED: 'NOT_GENERATED',
+  GENERATED: 'GENERATED',
+  FAILED: 'FAILED',
+} as const;
+
+export interface PayslipStatus {
+  payrollRecordId: number;
+  status: PayslipStatusStatus;
+  /** @nullable */
+  generatedAt?: string | null;
+  /** @nullable */
+  errorMessage?: string | null;
+}
+
+export type PayslipStatusUpdateStatus = typeof PayslipStatusUpdateStatus[keyof typeof PayslipStatusUpdateStatus];
+
+
+export const PayslipStatusUpdateStatus = {
+  NOT_GENERATED: 'NOT_GENERATED',
+  GENERATED: 'GENERATED',
+  FAILED: 'FAILED',
+} as const;
+
+export interface PayslipStatusUpdate {
+  payrollRecordId: number;
+  status: PayslipStatusUpdateStatus;
+  /** @nullable */
+  errorMessage?: string | null;
+}
+
+export interface PayslipStatusBatchUpdate {
+  updates: PayslipStatusUpdate[];
+}
+
 export type PayrollRunDetail = PayrollRun & {
   records: PayrollRecord[];
 };
@@ -459,5 +497,13 @@ page?: number;
  * @maximum 100
  */
 limit?: number;
+};
+
+export type GetPayslipStatuses200 = {
+  statuses: PayslipStatus[];
+};
+
+export type SavePayslipStatuses200 = {
+  updated?: number;
 };
 

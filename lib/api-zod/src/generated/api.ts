@@ -92,6 +92,12 @@ export const UpdateCompanySettingsResponse = zod.object({
 
 
 /**
+ * @summary Download company logo (binary)
+ */
+export const GetCompanyLogoResponse = zod.unknown()
+
+
+/**
  * @summary Remove company logo
  */
 export const RemoveCompanyLogoResponse = zod.object({
@@ -643,6 +649,43 @@ export const GetPayrollRunResponse = zod.object({
   "additionalComponents": zod.record(zod.string(), zod.string()).nullish()
 }))
 }))
+
+
+/**
+ * @summary Get payslip generation statuses for a run
+ */
+export const GetPayslipStatusesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetPayslipStatusesResponse = zod.object({
+  "statuses": zod.array(zod.object({
+  "payrollRecordId": zod.number(),
+  "status": zod.enum(['NOT_GENERATED', 'GENERATED', 'FAILED']),
+  "generatedAt": zod.string().nullish(),
+  "errorMessage": zod.string().nullish()
+}))
+})
+
+
+/**
+ * @summary Bulk-upsert payslip generation statuses
+ */
+export const SavePayslipStatusesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SavePayslipStatusesBody = zod.object({
+  "updates": zod.array(zod.object({
+  "payrollRecordId": zod.number(),
+  "status": zod.enum(['NOT_GENERATED', 'GENERATED', 'FAILED']),
+  "errorMessage": zod.string().nullish()
+}))
+})
+
+export const SavePayslipStatusesResponse = zod.object({
+  "updated": zod.number().optional()
+})
 
 
 /**

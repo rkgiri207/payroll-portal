@@ -134,6 +134,20 @@ paths:
                 $ref: "#/components/schemas/CompanySettings"
 
   /company-settings/logo:
+    get:
+      operationId: getCompanyLogo
+      tags: [company-settings]
+      summary: Download company logo (binary)
+      responses:
+        "200":
+          description: Logo image
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: No logo configured
     delete:
       operationId: removeCompanyLogo
       tags: [company-settings]
@@ -554,6 +568,57 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiError"
+
+  /payroll-runs/{id}/payslip-statuses:
+    get:
+      operationId: getPayslipStatuses
+      tags: [payroll-runs]
+      summary: Get payslip generation statuses for a run
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Statuses
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [statuses]
+                properties:
+                  statuses:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PayslipStatus"
+    patch:
+      operationId: savePayslipStatuses
+      tags: [payroll-runs]
+      summary: Bulk-upsert payslip generation statuses
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayslipStatusBatchUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated:
+                    type: number
 
   /payroll-runs/{id}/cancel:
     patch:
@@ -1139,6 +1204,41 @@ components:
           type: ["object", "null"]
           additionalProperties:
             type: string
+
+    PayslipStatus:
+      type: object
+      required: [payrollRecordId, status]
+      properties:
+        payrollRecordId:
+          type: number
+        status:
+          type: string
+          enum: [NOT_GENERATED, GENERATED, FAILED]
+        generatedAt:
+          type: ["string", "null"]
+        errorMessage:
+          type: ["string", "null"]
+
+    PayslipStatusBatchUpdate:
+      type: object
+      required: [updates]
+      properties:
+        updates:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayslipStatusUpdate"
+
+    PayslipStatusUpdate:
+      type: object
+      required: [payrollRecordId, status]
+      properties:
+        payrollRecordId:
+          type: number
+        status:
+          type: string
+          enum: [NOT_GENERATED, GENERATED, FAILED]
+        errorMessage:
+          type: ["string", "null"]
 
     PayrollRunDetail:
       allOf:

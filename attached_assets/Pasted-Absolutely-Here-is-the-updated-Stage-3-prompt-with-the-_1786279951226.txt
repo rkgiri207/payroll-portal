@@ -1,0 +1,798 @@
+Absolutely. Here is the **updated Stage 3 prompt**, with the payslip layout we agreed on and **mobile number explicitly retained**.
+
+```text
+Continue development of the existing "Payroll Portal" application.
+
+IMPORTANT:
+Stage 1 and Stage 2 have already been implemented.
+
+DO NOT rebuild the application.
+DO NOT replace the existing authentication, database, company settings, payroll import, or validation systems.
+
+Build ONLY Stage 3: PROFESSIONAL INDIVIDUAL PAYSLIP PDF GENERATION.
+
+Before making changes, inspect the existing application and understand the current Payroll Run and Payroll Record data structures created in Stage 2.
+
+==================================================
+STAGE 3 OBJECTIVE
+==================================================
+
+Implement a complete payslip generation system:
+
+Imported Payroll Run
+        ↓
+Individual Payroll Records
+        ↓
+Payslip Preview
+        ↓
+Individual PDF generation
+        ↓
+Download individual PDF
+        ↓
+Generate all payslips
+        ↓
+Download all payslips as ZIP
+
+Do NOT implement WhatsApp, secure 7-day links, or Meta API integration in this stage.
+
+==================================================
+1. PAYSLIP MODULE
+==================================================
+
+Make the Payslips section fully functional.
+
+The administrator should be able to:
+
+- Select a Payroll Run
+- View all employees in that payroll run
+- Search by Employee ID or Employee Name
+- Preview an individual payslip
+- Generate an individual PDF
+- Download an individual PDF
+- Generate all payslips for the payroll run
+- Download all generated payslips as a ZIP
+
+Do not require employees to have an Employee Master record.
+
+All employee and payroll information must come directly from the imported Payroll Record.
+
+==================================================
+2. PAYSLIP DESIGN — LOCKED TEMPLATE
+==================================================
+
+Create a professional, clean, print-ready salary slip.
+
+Do NOT create a generic Excel-to-PDF conversion.
+
+The following visual structure is the required design direction and should be followed closely.
+
+The payslip should normally fit on ONE A4 PAGE in portrait orientation.
+
+--------------------------------------------------
+HEADER
+--------------------------------------------------
+
+At the top:
+
+[COMPANY LOGO]
+
+COMPANY NAME
+
+Company Address
+Phone | Email | Website (where configured)
+
+The company logo and company information MUST come from the existing Company Settings.
+
+Do NOT hard-code company name or logo.
+
+If no logo is configured, generate the payslip correctly without a broken image.
+
+--------------------------------------------------
+PAYSLIP TITLE
+--------------------------------------------------
+
+Below the header:
+
+SALARY SLIP
+
+Payroll Month: <Month Year>
+
+Example:
+
+SALARY SLIP
+July 2026
+
+The title should be visually prominent but professional.
+
+--------------------------------------------------
+EMPLOYEE DETAILS
+--------------------------------------------------
+
+Create a clean bordered information section.
+
+Display:
+
+Employee ID
+Employee Name
+Designation
+Branch
+Joining Date
+Mobile Number
+
+Example:
+
+Employee ID      : EMP001
+Employee Name    : Ravi Kumar
+Designation      : Teacher
+Branch           : Main Branch
+Joining Date     : 10 June 2024
+Mobile Number    : 9876543210
+
+IMPORTANT:
+
+KEEP THE MOBILE NUMBER ON THE PAYSLIP.
+
+Even though the mobile number will later be used for WhatsApp delivery, it is also part of the employee information and must remain visible on the payslip.
+
+Only omit optional fields if the corresponding data is genuinely unavailable.
+
+Do not display blank labels unnecessarily.
+
+--------------------------------------------------
+SALARY SECTION
+--------------------------------------------------
+
+Use a balanced two-column salary table.
+
+LEFT SIDE:
+EARNINGS
+
+RIGHT SIDE:
+DEDUCTIONS
+
+Example:
+
+┌────────────────────────┬───────────┬────────────────────────┬───────────┐
+│ EARNINGS               │ AMOUNT    │ DEDUCTIONS             │ AMOUNT    │
+├────────────────────────┼───────────┼────────────────────────┼───────────┤
+│ Basic                  │ ₹20,000   │ PF                     │ ₹2,400    │
+│ DA                     │ ₹5,000    │ ESI                    │ ₹0        │
+│ HRA                    │ ₹3,000    │ TDS                    │ ₹500      │
+│ Conveyance             │ ₹1,000    │ Other Deduction        │ ₹100      │
+│ Special Allowance      │ ₹2,000    │ Loan                   │ ₹500      │
+├────────────────────────┼───────────┼────────────────────────┼───────────┤
+│ TOTAL EARNINGS         │ ₹31,000   │ TOTAL DEDUCTIONS        │ ₹3,500    │
+└────────────────────────┴───────────┴────────────────────────┴───────────┘
+
+The actual rows must come from the imported payroll data.
+
+Do NOT hard-code the example rows.
+
+--------------------------------------------------
+3. EARNINGS
+--------------------------------------------------
+
+Display all earnings components imported from the payroll Excel.
+
+Examples:
+
+- Basic
+- DA
+- HRA
+- Conveyance
+- Special Allowance
+- Medical Allowance
+- Bonus
+- Incentive
+- Arrears
+- Overtime
+- Other Earnings
+
+The application must NOT assume that only Basic, DA and HRA exist.
+
+Use the flexible additional_components structure created in Stage 2.
+
+If an earnings component exists in the payroll record, display it.
+
+If it does not exist, do not show it.
+
+At the bottom:
+
+TOTAL EARNINGS / GROSS SALARY
+
+Use the imported Gross Salary value.
+
+IMPORTANT:
+
+Do NOT recalculate Gross Salary.
+
+The Excel-imported Gross Salary is the source of truth.
+
+--------------------------------------------------
+4. DEDUCTIONS
+--------------------------------------------------
+
+Display all deduction components imported from the payroll Excel.
+
+Examples:
+
+- PF
+- ESI
+- TDS
+- Professional Tax
+- Loan Deduction
+- Advance
+- Leave Deduction
+- Other Deduction
+
+Use the flexible additional_components structure.
+
+Only display components that actually exist.
+
+At the bottom:
+
+TOTAL DEDUCTIONS
+
+Use the imported deduction value where available.
+
+Do NOT independently recalculate statutory deductions.
+
+--------------------------------------------------
+5. NET SALARY
+--------------------------------------------------
+
+Below the earnings/deductions table, create a visually prominent Net Salary section.
+
+Example:
+
+                 NET SALARY
+
+                 ₹26,000.00
+
+       Rupees Twenty-Six Thousand Only
+
+The Net Salary amount must be visually prominent.
+
+Use the imported Net Salary value.
+
+DO NOT recalculate Net Salary.
+
+--------------------------------------------------
+6. NET SALARY IN WORDS
+--------------------------------------------------
+
+Generate the Indian currency amount in words.
+
+Examples:
+
+₹32,100.00
+
+Rupees Thirty-Two Thousand One Hundred Only
+
+₹32,100.50
+
+Rupees Thirty-Two Thousand One Hundred and Fifty Paise Only
+
+Implement this locally.
+
+Do not use an external API.
+
+Support Indian numbering conventions:
+
+- Thousand
+- Lakh
+- Crore
+
+Correctly handle:
+
+- Whole rupees
+- Paise
+- Zero
+- Decimal amounts
+
+--------------------------------------------------
+7. FOOTER
+--------------------------------------------------
+
+Use a small professional footer:
+
+"This is a computer-generated salary slip and does not require a signature."
+
+Do not invent legal/statutory statements.
+
+Do not make unsupported claims about tax, PF, ESI or other legislation.
+
+--------------------------------------------------
+8. SIGNATURES
+--------------------------------------------------
+
+Do NOT require signatures.
+
+Do not create fake signatures.
+
+Do not create fake signature images.
+
+For Version 1, omit signature areas entirely.
+
+--------------------------------------------------
+9. PDF FORMAT
+--------------------------------------------------
+
+Generate:
+
+- A4
+- Portrait
+- Print-ready PDF
+- Professional typography
+- Clean margins
+- Correct alignment
+- Correct ₹ symbol
+- No clipping
+- No overlapping text
+- No broken images
+
+The payslip should normally fit on one A4 page.
+
+If a payroll has many salary components, allow a second page rather than making the text unreadably small.
+
+--------------------------------------------------
+10. PDF FILE NAMING
+--------------------------------------------------
+
+Use:
+
+<EmployeeID>_<EmployeeName>_<PayrollMonth>_<PayrollYear>.pdf
+
+Example:
+
+EMP001_Ravi_Kumar_July_2026.pdf
+
+Sanitize filenames so special characters cannot cause filesystem/path problems.
+
+--------------------------------------------------
+11. PAYSLIP PREVIEW
+--------------------------------------------------
+
+Provide an individual payslip preview before download.
+
+The preview and generated PDF MUST use the same rendering/data logic.
+
+Provide:
+
+[Preview]
+[Download PDF]
+
+Do not create one layout for preview and another layout for the PDF.
+
+--------------------------------------------------
+12. GENERATE ALL PAYSLIPS
+--------------------------------------------------
+
+For every Payroll Run provide:
+
+[Generate All Payslips]
+
+When clicked:
+
+1. Find all valid payroll records.
+2. Generate one PDF per employee.
+3. Process records safely.
+4. Show progress.
+5. Continue processing valid records if one record fails.
+6. Report failures clearly.
+
+Example:
+
+Generating payslips...
+
+1 / 125
+2 / 125
+...
+125 / 125
+
+Completed:
+
+125 generated
+0 failed
+
+If failures occur:
+
+123 generated
+2 failed
+
+Show the employee and reason for each failure.
+
+Never silently fail.
+
+--------------------------------------------------
+13. DOWNLOAD ALL
+--------------------------------------------------
+
+Provide:
+
+[Download All Payslips]
+
+Package the generated individual PDFs into:
+
+July_2026_Payslips.zip
+
+The ZIP should contain:
+
+EMP001_Ravi_Kumar_July_2026.pdf
+EMP002_Suresh_Rao_July_2026.pdf
+EMP003_Priya_Reddy_July_2026.pdf
+
+Only authenticated administrators can download the ZIP.
+
+Do not expose it publicly.
+
+--------------------------------------------------
+14. GENERATION STATUS
+--------------------------------------------------
+
+If necessary, extend the database to track:
+
+- payroll_record_id
+- generation_status
+- generated_at
+- PDF reference/filename
+- generation error
+
+Statuses:
+
+NOT_GENERATED
+GENERATED
+FAILED
+
+Do not duplicate payroll records when generating PDFs.
+
+--------------------------------------------------
+15. REGENERATE PAYSLIP
+--------------------------------------------------
+
+Allow the administrator to regenerate an individual payslip.
+
+Example:
+
+[Regenerate PDF]
+
+Regeneration must:
+
+- Use the current company logo.
+- Use the current company name/settings.
+- Use the current payslip template.
+- Preserve the original payroll figures.
+
+Do NOT modify payroll data during regeneration.
+
+--------------------------------------------------
+16. DATA ACCURACY
+--------------------------------------------------
+
+This is critical.
+
+The payslip must display the values exactly as imported from Excel.
+
+The application must NOT:
+
+- Recalculate Basic
+- Recalculate DA
+- Recalculate HRA
+- Recalculate Gross
+- Recalculate PF
+- Recalculate ESI
+- Recalculate TDS
+- Recalculate deductions
+- Recalculate Net Salary
+- Apply tax rules
+- Apply statutory rules
+
+The payroll Excel is the source of truth.
+
+Stage 3 is responsible only for presentation and PDF generation.
+
+--------------------------------------------------
+17. ADDITIONAL SALARY COMPONENTS
+--------------------------------------------------
+
+Stage 2 supports additional payroll components.
+
+Stage 3 must correctly display them.
+
+Example:
+
+Earnings:
+
+Basic
+DA
+HRA
+Conveyance
+Special Allowance
+
+Deductions:
+
+PF
+TDS
+Loan
+
+All should appear in the appropriate section.
+
+Do not display technical field names.
+
+Convert internal names into human-readable labels.
+
+Examples:
+
+special_allowance → Special Allowance
+other_deductions → Other Deductions
+
+--------------------------------------------------
+18. ZERO VALUES
+--------------------------------------------------
+
+Do not unnecessarily display components that were not present in the payroll data.
+
+For example, if ESI was not supplied in the Excel, do not automatically add:
+
+ESI ₹0.00
+
+Only display components actually present in the payroll record.
+
+If a component explicitly exists in the imported payroll data with a zero value, display it consistently.
+
+--------------------------------------------------
+19. MISSING DATA
+--------------------------------------------------
+
+Optional employee information must not prevent PDF generation.
+
+Examples:
+
+Missing designation → omit it.
+
+Missing branch → omit it.
+
+Missing joining date → omit it.
+
+Missing mobile → omit it from the payslip only if genuinely unavailable.
+
+IMPORTANT:
+
+If mobile number exists in the payroll record, ALWAYS display it on the payslip.
+
+Required payroll information such as Employee Name, Employee ID and Net Salary must be present.
+
+If required information is missing, mark that payroll record as unable to generate and show a clear error.
+
+Do not generate a misleading payslip.
+
+--------------------------------------------------
+20. SECURITY
+--------------------------------------------------
+
+Maintain all Stage 1 and Stage 2 security.
+
+Payslips contain sensitive salary information.
+
+Therefore:
+
+- Only authenticated administrators can preview/download payslips.
+- PDFs must not be publicly accessible.
+- Do not expose direct public storage URLs.
+- Do not put salary information in URL parameters.
+- Do not log salary values unnecessarily.
+- Do not expose payroll data through unauthenticated APIs.
+
+IMPORTANT:
+
+DO NOT create public employee-accessible payslip URLs yet.
+
+Secure 7-day links belong to Stage 4.
+
+--------------------------------------------------
+21. PERFORMANCE
+--------------------------------------------------
+
+The system should support payroll runs containing several hundred employees.
+
+For bulk generation:
+
+- Process records in a controlled manner.
+- Avoid loading unnecessary data into browser memory.
+- Generate PDFs server-side where appropriate.
+- Do not let one failed record crash the entire batch.
+- Report individual failures.
+
+--------------------------------------------------
+22. USER INTERFACE
+--------------------------------------------------
+
+Maintain the existing Stage 1/2 design system.
+
+Do not redesign the entire application.
+
+Suggested workflow:
+
+Payroll History
+      ↓
+Select Payroll Run
+      ↓
+View Payroll
+      ↓
+Payslips
+
+Payslips page should provide:
+
+- Search by Employee ID
+- Search by Employee Name
+- Generation status
+- Preview
+- Download
+- Regenerate
+
+At the top:
+
+[Generate All Payslips]
+[Download All]
+
+--------------------------------------------------
+23. PDF VISUAL QUALITY
+--------------------------------------------------
+
+The final PDF should look like a professional salary slip issued by an established organization.
+
+Prioritize:
+
+- Clean alignment
+- Balanced whitespace
+- Clear section hierarchy
+- Easy reading
+- Professional tables
+- Consistent typography
+- Strong but restrained Net Salary emphasis
+- Proper company branding
+
+Avoid:
+
+- Excessive colors
+- Decorative graphics
+- Oversized logos
+- Tiny text
+- Crowded tables
+- Unnecessary information
+- An "AI-generated" appearance
+- Raw Excel-style formatting
+
+The document should look suitable for printing and sending directly to an employee.
+
+--------------------------------------------------
+24. TESTING
+--------------------------------------------------
+
+Use the existing Stage 2 test payroll if available.
+
+Do not create fake production data.
+
+Test at minimum:
+
+1. Basic + DA + HRA payroll.
+2. Additional earnings.
+3. Additional deductions.
+4. Mobile number present.
+5. Mobile number missing.
+6. Designation missing.
+7. Branch missing.
+8. Joining date missing.
+9. Decimal salary values.
+10. Indian Rupee values.
+11. Long employee name.
+12. Long designation.
+13. Multiple employees.
+14. Bulk generation.
+15. ZIP download.
+16. Individual regeneration.
+17. Company logo present.
+18. Company logo removed.
+19. Company name changed.
+20. Missing required payroll information.
+21. Large number of salary components.
+22. One failed record during bulk generation.
+
+For every generated PDF verify:
+
+- A4 layout.
+- No clipping.
+- No overlapping text.
+- Correct company logo.
+- Correct company name.
+- Correct payroll month/year.
+- Correct Employee ID.
+- Correct Employee Name.
+- Correct Designation.
+- Correct Branch.
+- Correct Joining Date.
+- Correct MOBILE NUMBER.
+- Correct earnings.
+- Correct deductions.
+- Correct gross salary.
+- Correct net salary.
+- Correct amount in words.
+- Correct ₹ symbol.
+- Professional appearance.
+
+--------------------------------------------------
+25. DO NOT IMPLEMENT STAGE 4
+--------------------------------------------------
+
+Do NOT implement:
+
+- 7-day secure payslip links
+- Public payslip pages
+- WhatsApp API
+- Meta Cloud API
+- WhatsApp template integration
+- statement_available_1
+- Bulk WhatsApp sending
+- WhatsApp delivery status
+
+These belong exclusively to Stage 4.
+
+--------------------------------------------------
+26. STAGE 3 COMPLETION CRITERIA
+--------------------------------------------------
+
+Stage 3 is complete only when:
+
+1. Administrator can select a payroll run.
+2. Administrator can view payroll records.
+3. Administrator can preview an individual payslip.
+4. Administrator can generate an individual PDF.
+5. PDF uses current company branding.
+6. PDF displays employee information correctly.
+7. Mobile number is displayed when available.
+8. PDF displays all relevant earnings.
+9. PDF displays all relevant deductions.
+10. PDF displays gross salary.
+11. PDF displays total deductions.
+12. PDF displays net salary.
+13. PDF displays net salary in words.
+14. Additional payroll components are displayed correctly.
+15. Individual PDFs can be downloaded.
+16. All payslips can be generated in bulk.
+17. All PDFs can be downloaded as a ZIP.
+18. Individual payslips can be regenerated.
+19. Missing optional information does not break generation.
+20. Missing required payroll information is handled safely.
+21. PDFs are not publicly accessible.
+22. No Stage 1 or Stage 2 functionality is broken.
+23. Application builds and runs successfully.
+24. Tests pass.
+
+After implementation:
+
+- Run all relevant tests.
+- Generate several actual test PDFs.
+- Inspect the PDFs visually.
+- Test individual download.
+- Test bulk generation.
+- Test ZIP download.
+- Test regeneration after changing the company name/logo.
+- Verify that the mobile number appears correctly.
+- Verify that imported salary values have not changed.
+
+Then provide a concise report containing:
+
+- PDF library/technology used
+- Files created/modified
+- Database changes
+- Payslip template implemented
+- How additional payroll components are handled
+- How PDFs are stored
+- Tests performed
+- Known limitations
+- Confirmation that Stage 3 is complete
+
+IMPORTANT:
+Do not proceed to Stage 4.
+Stop after Stage 3 is fully implemented and tested.
+```

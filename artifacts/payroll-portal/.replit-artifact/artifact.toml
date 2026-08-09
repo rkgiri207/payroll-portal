@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Payroll Portal"
+description = "A production-ready payroll management web application for school/business administrators. Stage 1 includes secure authentication, company settings (with logo upload), an admin dashboard shell, and audit logging. Built for desktop-first use by non-technical office staff."
+version = "1.0.0"
+id = "artifacts/payroll-portal"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19901
+
+[services.development]
+run = "pnpm --filter @workspace/payroll-portal run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/payroll-portal", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/payroll-portal/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19901"
+BASE_PATH = "/"

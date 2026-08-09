@@ -1,0 +1,430 @@
+Build Stage 1 of a production-ready web application called "Payroll Portal".
+
+IMPORTANT:
+This is a NEW, INDEPENDENT payroll application. Do NOT modify, connect to, or make assumptions about any existing school/fee portal at this stage.
+
+The application will eventually be hosted on a subdomain such as:
+payroll.<existing-domain>.com
+
+The existing school fee portal and its payment/WhatsApp systems must remain completely untouched.
+
+==================================================
+PROJECT OBJECTIVE
+==================================================
+
+Create the foundation for a payroll management web application that will later:
+
+1. Accept payroll Excel files.
+2. Generate individual employee payslip PDFs.
+3. Store payroll history.
+4. Generate secure payslip links that expire after 7 days.
+5. Send payslip notifications through the existing Meta WhatsApp Business/Cloud API.
+6. Use the existing approved Meta WhatsApp template:
+   statement_available_1
+
+DO NOT implement Excel processing, PDF generation, WhatsApp integration, or statutory reports in Stage 1.
+
+Stage 1 is only the foundation.
+
+==================================================
+TECHNOLOGY
+==================================================
+
+Choose a modern, stable full-stack architecture that works well natively on Replit.
+
+Requirements:
+
+- Responsive web application
+- Desktop-first admin interface but fully usable on mobile
+- Secure backend/API
+- PostgreSQL database
+- Proper server-side authentication
+- Environment variables/secrets for all sensitive configuration
+- No secrets hard-coded in source code
+- Clean modular architecture so later stages can be added without restructuring the application
+- Use TypeScript wherever practical
+- Use a modern component-based frontend
+- Use a clean professional UI suitable for a school/business payroll system
+
+Do NOT introduce unnecessary frameworks or services.
+
+Prefer Replit's native PostgreSQL/database facilities where appropriate so the application remains easy to develop and deploy on Replit.
+
+==================================================
+APPLICATION NAME
+==================================================
+
+Use:
+
+Payroll Portal
+
+Do not use "HRMS" or make this into a general HR system.
+
+==================================================
+STAGE 1 FEATURES
+==================================================
+
+### 1. Authentication
+
+Create secure admin authentication.
+
+Requirements:
+
+- Login page
+- Email/username + password authentication
+- Secure password hashing
+- Secure session handling
+- Logout
+- Protected application routes
+- Unauthenticated users must not be able to access the dashboard
+- Do not expose passwords or authentication secrets in the frontend
+- Do not create public registration
+
+Initially this is an ADMIN-ONLY application.
+
+Design the authentication architecture so employee accounts can potentially be added later, but DO NOT implement employee login in Stage 1.
+
+Create a secure way to establish the initial administrator account during deployment/setup.
+
+Do not put a default administrator password directly into source code.
+
+==================================================
+2. DATABASE FOUNDATION
+==================================================
+
+Create the PostgreSQL database schema needed for Stage 1.
+
+At minimum create:
+
+### users
+Fields should include appropriate fields such as:
+
+- id
+- name
+- email
+- password_hash
+- role
+- is_active
+- created_at
+- updated_at
+- last_login_at
+
+Role should initially support:
+
+- ADMIN
+
+Structure the schema so additional roles can be added later.
+
+### company_settings
+
+Create a single company/settings record containing:
+
+- id
+- company_name
+- logo
+- address
+- phone
+- email
+- website
+- created_at
+- updated_at
+
+Only company_name and logo are mandatory for Stage 1.
+
+For the logo, use an appropriate storage approach rather than storing a huge image directly in the database.
+
+The architecture must allow the logo to be changed later by an administrator.
+
+Do NOT hard-code the company name.
+
+==================================================
+3. ADMIN SETTINGS
+==================================================
+
+Create an Admin Settings page.
+
+The administrator must be able to:
+
+- Change company name
+- Upload/change company logo
+- Remove the existing logo
+- Save changes
+- See a preview of the logo
+- See the current company name
+
+Changes should be stored in the database/storage and persist after logout/reload.
+
+Validate uploaded logo files.
+
+Accept common image formats such as:
+- PNG
+- JPG/JPEG
+- WebP
+
+Set a sensible maximum file size.
+
+Do not allow arbitrary executable files to be uploaded.
+
+==================================================
+4. DASHBOARD SHELL
+==================================================
+
+Create a clean admin dashboard.
+
+At this stage it should be a foundation/shell rather than a fully functional payroll dashboard.
+
+Include:
+
+Sidebar/navigation:
+
+- Dashboard
+- Employees
+- Payroll
+- Payslips
+- Settings
+
+The pages/modules other than Dashboard and Settings can initially show a clean "Coming in next stage" placeholder.
+
+Do NOT implement their functionality yet.
+
+Dashboard should display a few foundation cards such as:
+
+- Total Employees
+- Payroll Runs
+- Payslips Generated
+- Recent Activity
+
+These can initially show zero/empty states because those modules are not implemented yet.
+
+Create a clean empty-state design rather than fake data.
+
+==================================================
+5. UI/UX
+==================================================
+
+Create a professional, modern payroll/admin interface.
+
+Design principles:
+
+- Clean
+- Minimal
+- Professional
+- Fast
+- Easy for non-technical office staff
+- Avoid excessive animations
+- Avoid unnecessary gradients
+- Avoid overly flashy "AI-generated" styling
+
+Use a consistent design system for:
+
+- Buttons
+- Forms
+- Tables
+- Cards
+- Modals
+- Notifications/toasts
+- Navigation
+- Empty states
+- Error states
+
+The application should look like a real business product rather than a prototype.
+
+Use responsive layouts.
+
+Desktop should be the primary experience because payroll administrators will mainly use a PC.
+
+==================================================
+6. COMPANY BRANDING
+==================================================
+
+The company logo and company name configured in Settings should be available through a centralized configuration/service.
+
+Do NOT hard-code branding throughout individual pages.
+
+Later stages will need to use the company name and logo in generated payslips and WhatsApp messages.
+
+Therefore create a clean reusable mechanism for accessing the current company settings.
+
+==================================================
+7. SECURITY REQUIREMENTS
+==================================================
+
+Implement security from the beginning.
+
+At minimum:
+
+- Passwords must be securely hashed
+- Authentication must be server-side
+- Protected API endpoints
+- Validate all user input
+- Validate uploaded files
+- Prevent unauthorized database access
+- Do not expose sensitive environment variables to the browser
+- Use secure session/cookie configuration
+- Handle authentication errors safely
+- Do not reveal whether a particular login account exists
+- Do not log passwords, tokens, or secrets
+
+Prepare the architecture for later secure payslip links.
+
+DO NOT implement the 7-day links yet.
+
+==================================================
+8. AUDIT FOUNDATION
+==================================================
+
+Create a basic audit_logs table and audit logging utility.
+
+It should eventually support recording events such as:
+
+- Login
+- Logout
+- Company settings changed
+- Employee created/updated
+- Payroll uploaded
+- Payslip generated
+- WhatsApp message sent
+
+For Stage 1, implement logging for:
+
+- Successful login
+- Logout
+- Company settings changes
+
+Do not build a complete audit-log UI yet.
+
+==================================================
+9. ERROR HANDLING
+==================================================
+
+Implement proper:
+
+- Loading states
+- Error states
+- Form validation
+- Success notifications
+- Database error handling
+- Authentication error handling
+
+Do not show raw server errors, stack traces, SQL errors, or sensitive technical details to users.
+
+==================================================
+10. CODE ORGANIZATION
+==================================================
+
+Keep the application modular.
+
+Separate:
+
+- UI components
+- Pages/routes
+- API/backend
+- Database models/schema
+- Authentication
+- Company settings
+- File/storage handling
+- Audit logging
+- Shared utilities
+
+Do not put the entire application into one or two large files.
+
+Use clear naming conventions.
+
+Add comments only where they provide useful context.
+
+==================================================
+11. FUTURE STAGE COMPATIBILITY
+==================================================
+
+The architecture MUST be prepared for these upcoming stages:
+
+STAGE 2:
+Employee master + Excel upload + payroll validation
+
+STAGE 3:
+Payslip PDF generation + secure 7-day links
+
+STAGE 4:
+WhatsApp Cloud API integration using existing approved template:
+statement_available_1
+
+STAGE 5:
+Payroll history + bulk operations + downloads
+
+STAGE 6:
+Testing, security hardening and production deployment
+
+Do not implement these features now.
+
+However, make sure the database, routing and service architecture can accommodate them without a major rewrite.
+
+==================================================
+12. IMPORTANT WHATSAPP INFORMATION
+==================================================
+
+The eventual WhatsApp integration will use an EXISTING Meta WhatsApp Business/Cloud API number that is already used by another school fee application for payment receipts.
+
+The payroll application will eventually use the existing approved template:
+
+statement_available_1
+
+DO NOT:
+
+- Create a new WhatsApp number
+- Create a new WhatsApp application
+- Create a new WhatsApp template
+- Modify the existing payment-receipt system
+- Implement WhatsApp integration in Stage 1
+- Ask me to provide WhatsApp credentials now
+
+We will configure this separately in a later stage using secure environment secrets.
+
+==================================================
+13. EXISTING DOMAIN
+==================================================
+
+The eventual production URL will likely be:
+
+payroll.<existing-domain>.com
+
+Do not configure DNS or domain changes yet.
+
+The application must be deployable to a custom domain later.
+
+==================================================
+14. DELIVERABLES FOR STAGE 1
+==================================================
+
+When finished:
+
+1. Make sure the application runs successfully on Replit.
+2. Make sure the database is connected.
+3. Make sure migrations/schema setup is reproducible.
+4. Make sure admin authentication works.
+5. Make sure logout works.
+6. Make sure protected routes work.
+7. Make sure company name can be changed.
+8. Make sure company logo can be uploaded, changed and removed.
+9. Make sure settings persist after reload/logout.
+10. Make sure audit logging works for login/logout/settings changes.
+11. Make sure the application has no fake payroll/employee data.
+12. Make sure there are no broken links or console errors.
+13. Run appropriate tests.
+14. Fix any errors you encounter.
+15. Verify the production build succeeds.
+
+At the end, give me a concise report containing:
+
+- Technology stack selected
+- Database tables created
+- Routes/pages created
+- Authentication implementation
+- Where uploaded logos are stored
+- Environment variables/secrets required
+- Tests performed
+- Any known limitations
+- Confirmation that Stage 1 is complete
+
+IMPORTANT:
+Do not proceed into Stage 2.
+Stop after Stage 1 is fully working and tested.

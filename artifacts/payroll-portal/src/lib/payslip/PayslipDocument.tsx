@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   cellEarLabel: { flex: 2.5, padding: 5 },
   cellEarAmt:   { flex: 1.2, padding: 5, textAlign: 'right', borderLeftWidth: 0.5, borderLeftColor: BORDER },
   cellSep:      { width: 1, backgroundColor: '#9ca3af' },
-  cellDedLabel: { flex: 2.5, padding: 5 },
+  cellDedLabel: { flex: 2.5, paddingTop: 5, paddingBottom: 5, paddingRight: 5, paddingLeft: 8 },
   cellDedAmt:   { flex: 1.2, padding: 5, textAlign: 'right', borderLeftWidth: 0.5, borderLeftColor: BORDER },
 
   tableHeaderText: { fontSize: 8, fontWeight: 'bold', color: '#ffffff' },

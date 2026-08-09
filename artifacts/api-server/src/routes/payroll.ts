@@ -235,15 +235,20 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
       }
 
       // Compute total deductions for preview display
-      const pfRaw       = columnMapping.pf             ? row[columnMapping.pf]             : undefined;
-      const esiRaw      = columnMapping.esi            ? row[columnMapping.esi]            : undefined;
-      const tdsRaw      = columnMapping.tds            ? row[columnMapping.tds]            : undefined;
-      const otherDedRaw = columnMapping.otherDeductions ? row[columnMapping.otherDeductions] : undefined;
-      const pf      = normalizeSalaryValue(pfRaw);
-      const esi     = normalizeSalaryValue(esiRaw);
-      const tds     = normalizeSalaryValue(tdsRaw);
-      const otherDed = normalizeSalaryValue(otherDedRaw);
-      const totalDed = [pf, esi, tds, otherDed].reduce<string>((acc, v) => addDecimals(acc, v), '0.00');
+      const pfEmployeeRaw  = columnMapping.pfEmployee  ? row[columnMapping.pfEmployee]  : undefined;
+      const pfEmployerRaw  = columnMapping.pfEmployer  ? row[columnMapping.pfEmployer]  : undefined;
+      const esiEmployeeRaw = columnMapping.esiEmployee ? row[columnMapping.esiEmployee] : undefined;
+      const esiEmployerRaw = columnMapping.esiEmployer ? row[columnMapping.esiEmployer] : undefined;
+      const ptRaw          = columnMapping.pt           ? row[columnMapping.pt]           : undefined;
+      const otherDedRaw    = columnMapping.otherDeductions ? row[columnMapping.otherDeductions] : undefined;
+      const pfEmployee  = normalizeSalaryValue(pfEmployeeRaw);
+      const pfEmployer  = normalizeSalaryValue(pfEmployerRaw);
+      const esiEmployee = normalizeSalaryValue(esiEmployeeRaw);
+      const esiEmployer = normalizeSalaryValue(esiEmployerRaw);
+      const pt          = normalizeSalaryValue(ptRaw);
+      const otherDed    = normalizeSalaryValue(otherDedRaw);
+      const totalDed = [pfEmployee, pfEmployer, esiEmployee, esiEmployer, pt, otherDed]
+        .reduce<string>((acc, v) => addDecimals(acc, v), '0.00');
 
       // Running totals (valid values only)
       if (grossSalary) totalGross       = addDecimals(totalGross, grossSalary);
@@ -340,9 +345,11 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
       hra: string | null;
       otherEarnings: string | null;
       grossSalary: string | null;
-      pf: string | null;
-      esi: string | null;
-      tds: string | null;
+      pfEmployee: string | null;
+      pfEmployer: string | null;
+      esiEmployee: string | null;
+      esiEmployer: string | null;
+      pt: string | null;
       otherDeductions: string | null;
       netSalary: string | null;
       additionalComponents: Record<string, string>;
@@ -406,9 +413,11 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
       const hra            = get(columnMapping.hra);
       const otherEarnings  = get(columnMapping.otherEarnings);
       const grossSalary    = get(columnMapping.grossSalary);
-      const pf             = get(columnMapping.pf);
-      const esi            = get(columnMapping.esi);
-      const tds            = get(columnMapping.tds);
+      const pfEmployee      = get(columnMapping.pfEmployee);
+      const pfEmployer      = get(columnMapping.pfEmployer);
+      const esiEmployee     = get(columnMapping.esiEmployee);
+      const esiEmployer     = get(columnMapping.esiEmployer);
+      const pt              = get(columnMapping.pt);
       const otherDeductions = get(columnMapping.otherDeductions);
       const netSalary      = get(columnMapping.netSalary);
 
@@ -426,7 +435,8 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
       // Running totals
       if (grossSalary)  totalGross = addDecimals(totalGross, grossSalary);
       if (netSalary)    totalNet   = addDecimals(totalNet, netSalary);
-      const rowDed = [pf, esi, tds, otherDeductions].reduce<string>((acc, v) => addDecimals(acc, v), '0.00');
+      const rowDed = [pfEmployee, pfEmployer, esiEmployee, esiEmployer, pt, otherDeductions]
+        .reduce<string>((acc, v) => addDecimals(acc, v), '0.00');
       if (rowDed !== '0.00') totalDeductions = addDecimals(totalDeductions, rowDed);
 
       recordsToInsert.push({
@@ -442,9 +452,11 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
         hra,
         otherEarnings,
         grossSalary,
-        pf,
-        esi,
-        tds,
+        pfEmployee,
+        pfEmployer,
+        esiEmployee,
+        esiEmployer,
+        pt,
         otherDeductions,
         netSalary,
         additionalComponents,

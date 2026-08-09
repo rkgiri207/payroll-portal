@@ -18,9 +18,11 @@ export interface ColumnMapping {
   hra?: string;
   otherEarnings?: string;
   grossSalary?: string;
-  pf?: string;
-  esi?: string;
-  tds?: string;
+  pfEmployee?: string;
+  pfEmployer?: string;
+  esiEmployee?: string;
+  esiEmployer?: string;
+  pt?: string;
   otherDeductions?: string;
   netSalary?: string;
 }

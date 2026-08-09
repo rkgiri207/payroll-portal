@@ -33,9 +33,14 @@ export const payrollRecordsTable = pgTable("payroll_records", {
   grossSalary: numeric("gross_salary", { precision: 12, scale: 2 }),
 
   // Core deductions — imported from Excel
-  pf: numeric("pf", { precision: 12, scale: 2 }),
-  esi: numeric("esi", { precision: 12, scale: 2 }),
-  tds: numeric("tds", { precision: 12, scale: 2 }),
+  // PF split: employee contribution (12%) and employer contribution
+  pfEmployee: numeric("pf_employee", { precision: 12, scale: 2 }),
+  pfEmployer: numeric("pf_employer", { precision: 12, scale: 2 }),
+  // ESI split: employee contribution (0.75%) and employer contribution (3.25%)
+  esiEmployee: numeric("esi_employee", { precision: 12, scale: 2 }),
+  esiEmployer: numeric("esi_employer", { precision: 12, scale: 2 }),
+  // PT = Professional Tax (formerly TDS)
+  pt: numeric("pt", { precision: 12, scale: 2 }),
   otherDeductions: numeric("other_deductions", { precision: 12, scale: 2 }),
 
   // Net — imported from Excel

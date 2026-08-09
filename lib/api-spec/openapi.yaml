@@ -954,11 +954,15 @@ components:
           type: string
         grossSalary:
           type: string
-        pf:
+        pfEmployee:
           type: string
-        esi:
+        pfEmployer:
           type: string
-        tds:
+        esiEmployee:
+          type: string
+        esiEmployer:
+          type: string
+        pt:
           type: string
         otherDeductions:
           type: string
@@ -1190,11 +1194,15 @@ components:
           type: ["string", "null"]
         grossSalary:
           type: ["string", "null"]
-        pf:
+        pfEmployee:
           type: ["string", "null"]
-        esi:
+        pfEmployer:
           type: ["string", "null"]
-        tds:
+        esiEmployee:
+          type: ["string", "null"]
+        esiEmployer:
+          type: ["string", "null"]
+        pt:
           type: ["string", "null"]
         otherDeductions:
           type: ["string", "null"]

@@ -41,9 +41,11 @@ export interface PayslipRecord {
   hra?: string | null;
   otherEarnings?: string | null;
   grossSalary?: string | null;
-  pf?: string | null;
-  esi?: string | null;
-  tds?: string | null;
+  pfEmployee?: string | null;
+  pfEmployer?: string | null;
+  esiEmployee?: string | null;
+  esiEmployer?: string | null;
+  pt?: string | null;
   otherDeductions?: string | null;
   netSalary?: string | null;
   additionalComponents?: Record<string, string> | null;
@@ -101,9 +103,11 @@ function buildRows(record: PayslipRecord) {
   }
 
   // Standard deductions
-  if (record.pf !== null && record.pf !== undefined)             deductions.push({ label: 'PF', amount: record.pf });
-  if (record.esi !== null && record.esi !== undefined)           deductions.push({ label: 'ESI', amount: record.esi });
-  if (record.tds !== null && record.tds !== undefined)           deductions.push({ label: 'TDS', amount: record.tds });
+  if (record.pfEmployee != null)  deductions.push({ label: 'PF - Employee (12%)',       amount: record.pfEmployee });
+  if (record.pfEmployer != null)  deductions.push({ label: 'PF - Employer',              amount: record.pfEmployer });
+  if (record.esiEmployee != null) deductions.push({ label: 'ESI - Employee (0.75%)',     amount: record.esiEmployee });
+  if (record.esiEmployer != null) deductions.push({ label: 'ESI - Employer (3.25%)',     amount: record.esiEmployer });
+  if (record.pt != null)          deductions.push({ label: 'PT',                         amount: record.pt });
   if (record.otherDeductions !== null && record.otherDeductions !== undefined)
     deductions.push({ label: 'Other Deductions', amount: record.otherDeductions });
 
@@ -318,10 +322,10 @@ export function PayslipDocument({ record, run, company }: Props) {
             <View style={styles.cellSep} />
             <View style={styles.cellDedLabel}><Text style={styles.tableTotalText}>TOTAL DEDUCTIONS</Text></View>
             <View style={styles.cellDedAmt}>
-              {/* Sum PF+ESI+TDS+OtherDed */}
+              {/* Sum all deduction columns */}
               <Text style={styles.tableTotalText}>
                 {formatINRAmount(
-                  [record.pf, record.esi, record.tds, record.otherDeductions]
+                  [record.pfEmployee, record.pfEmployer, record.esiEmployee, record.esiEmployer, record.pt, record.otherDeductions]
                     .filter((v): v is string => v !== null && v !== undefined)
                     .reduce((sum, v) => sum + parseFloat(v || '0'), 0)
                     .toFixed(2)

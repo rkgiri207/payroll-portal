@@ -211,9 +211,11 @@ export interface ColumnMapping {
   hra?: string;
   otherEarnings?: string;
   grossSalary?: string;
-  pf?: string;
-  esi?: string;
-  tds?: string;
+  pfEmployee?: string;
+  pfEmployer?: string;
+  esiEmployee?: string;
+  esiEmployer?: string;
+  pt?: string;
   otherDeductions?: string;
   netSalary?: string;
 }
@@ -393,11 +395,15 @@ export interface PayrollRecord {
   /** @nullable */
   grossSalary?: string | null;
   /** @nullable */
-  pf?: string | null;
+  pfEmployee?: string | null;
   /** @nullable */
-  esi?: string | null;
+  pfEmployer?: string | null;
   /** @nullable */
-  tds?: string | null;
+  esiEmployee?: string | null;
+  /** @nullable */
+  esiEmployer?: string | null;
+  /** @nullable */
+  pt?: string | null;
   /** @nullable */
   otherDeductions?: string | null;
   /** @nullable */

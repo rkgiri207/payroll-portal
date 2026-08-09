@@ -32,11 +32,15 @@ export interface PayrollRecord {
   /** @nullable */
   grossSalary?: string | null;
   /** @nullable */
-  pf?: string | null;
+  pfEmployee?: string | null;
   /** @nullable */
-  esi?: string | null;
+  pfEmployer?: string | null;
   /** @nullable */
-  tds?: string | null;
+  esiEmployee?: string | null;
+  /** @nullable */
+  esiEmployer?: string | null;
+  /** @nullable */
+  pt?: string | null;
   /** @nullable */
   otherDeductions?: string | null;
   /** @nullable */

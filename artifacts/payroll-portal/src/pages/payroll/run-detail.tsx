@@ -195,9 +195,11 @@ export default function PayrollRunDetailPage() {
               <TableHead className="text-right whitespace-nowrap">HRA</TableHead>
               <TableHead className="text-right whitespace-nowrap">Other Earn</TableHead>
               <TableHead className="text-right font-semibold whitespace-nowrap">Gross</TableHead>
-              <TableHead className="text-right whitespace-nowrap">PF</TableHead>
-              <TableHead className="text-right whitespace-nowrap">ESI</TableHead>
-              <TableHead className="text-right whitespace-nowrap">TDS</TableHead>
+              <TableHead className="text-right whitespace-nowrap">PF Emp</TableHead>
+              <TableHead className="text-right whitespace-nowrap">PF Emplr</TableHead>
+              <TableHead className="text-right whitespace-nowrap">ESI Emp</TableHead>
+              <TableHead className="text-right whitespace-nowrap">ESI Emplr</TableHead>
+              <TableHead className="text-right whitespace-nowrap">PT</TableHead>
               <TableHead className="text-right whitespace-nowrap">Other Ded</TableHead>
               <TableHead className="text-right font-semibold whitespace-nowrap">Net Salary</TableHead>
               <TableHead className="text-center whitespace-nowrap">Additional</TableHead>
@@ -206,7 +208,7 @@ export default function PayrollRunDetailPage() {
           <TableBody>
             {run.records?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={16} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={18} className="h-32 text-center text-muted-foreground">
                   No records found in this run.
                 </TableCell>
               </TableRow>
@@ -225,9 +227,11 @@ export default function PayrollRunDetailPage() {
                     <TableCell className="text-right">{formatINR(record.hra)}</TableCell>
                     <TableCell className="text-right">{formatINR(record.otherEarnings)}</TableCell>
                     <TableCell className="text-right font-medium">{formatINR(record.grossSalary)}</TableCell>
-                    <TableCell className="text-right">{formatINR(record.pf)}</TableCell>
-                    <TableCell className="text-right">{formatINR(record.esi)}</TableCell>
-                    <TableCell className="text-right">{formatINR(record.tds)}</TableCell>
+                    <TableCell className="text-right">{formatINR((record as any).pfEmployee)}</TableCell>
+                    <TableCell className="text-right">{formatINR((record as any).pfEmployer)}</TableCell>
+                    <TableCell className="text-right">{formatINR((record as any).esiEmployee)}</TableCell>
+                    <TableCell className="text-right">{formatINR((record as any).esiEmployer)}</TableCell>
+                    <TableCell className="text-right">{formatINR((record as any).pt)}</TableCell>
                     <TableCell className="text-right">{formatINR(record.otherDeductions)}</TableCell>
                     <TableCell className="text-right font-bold">{formatINR(record.netSalary)}</TableCell>
                     <TableCell className="text-center">

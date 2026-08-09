@@ -234,6 +234,15 @@ export interface PayrollValidationInput {
   payrollYear: number;
 }
 
+export type PayrollValidationRowMobileStatus = typeof PayrollValidationRowMobileStatus[keyof typeof PayrollValidationRowMobileStatus];
+
+
+export const PayrollValidationRowMobileStatus = {
+  valid: 'valid',
+  missing: 'missing',
+  invalid: 'invalid',
+} as const;
+
 export type PayrollValidationRowStatus = typeof PayrollValidationRowStatus[keyof typeof PayrollValidationRowStatus];
 
 
@@ -251,6 +260,7 @@ export interface PayrollValidationRow {
   employeeName?: string | null;
   /** @nullable */
   mobileNumber?: string | null;
+  mobileStatus?: PayrollValidationRowMobileStatus;
   /** @nullable */
   designation?: string | null;
   /** @nullable */
@@ -274,6 +284,9 @@ export interface PayrollValidationSummary {
   totalGross: string;
   totalDeductions: string;
   totalNet: string;
+  validMobileCount: number;
+  missingMobileCount: number;
+  invalidMobileCount: number;
 }
 
 export interface PayrollValidationResult {

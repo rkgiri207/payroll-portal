@@ -407,6 +407,7 @@ export const ValidatePayrollResponse = zod.object({
   "employeeCode": zod.string().nullish(),
   "employeeName": zod.string().nullish(),
   "mobileNumber": zod.string().nullish(),
+  "mobileStatus": zod.enum(['valid', 'missing', 'invalid']).optional(),
   "designation": zod.string().nullish(),
   "branch": zod.string().nullish(),
   "grossSalary": zod.string().nullish(),
@@ -423,7 +424,10 @@ export const ValidatePayrollResponse = zod.object({
   "withErrors": zod.number(),
   "totalGross": zod.string(),
   "totalDeductions": zod.string(),
-  "totalNet": zod.string()
+  "totalNet": zod.string(),
+  "validMobileCount": zod.number(),
+  "missingMobileCount": zod.number(),
+  "invalidMobileCount": zod.number()
 }),
   "unmappedColumns": zod.array(zod.string()),
   "duplicateIds": zod.array(zod.string()),

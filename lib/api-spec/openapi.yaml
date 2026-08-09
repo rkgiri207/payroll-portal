@@ -931,6 +931,9 @@ components:
           type: ["string", "null"]
         mobileNumber:
           type: ["string", "null"]
+        mobileStatus:
+          type: string
+          enum: [valid, missing, invalid]
         designation:
           type: ["string", "null"]
         branch:
@@ -955,7 +958,7 @@ components:
 
     PayrollValidationSummary:
       type: object
-      required: [total, valid, withWarnings, withErrors, totalGross, totalDeductions, totalNet]
+      required: [total, valid, withWarnings, withErrors, totalGross, totalDeductions, totalNet, validMobileCount, missingMobileCount, invalidMobileCount]
       properties:
         total:
           type: number
@@ -971,6 +974,12 @@ components:
           type: string
         totalNet:
           type: string
+        validMobileCount:
+          type: number
+        missingMobileCount:
+          type: number
+        invalidMobileCount:
+          type: number
 
     PayrollValidationResult:
       type: object

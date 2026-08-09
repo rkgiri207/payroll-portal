@@ -1,0 +1,174 @@
+==================================================
+MOBILE NUMBER VALIDATION — IMPORTANT
+==================================================
+
+The Mobile Number imported from the payroll Excel must be validated during the Excel upload/preview/validation stage.
+
+Do NOT simply check whether the cell contains 10 characters.
+
+For Indian mobile numbers, apply proper validation.
+
+VALID FORMAT:
+
+- Exactly 10 digits after normalization.
+- Must begin with 6, 7, 8, or 9.
+- No alphabetic characters.
+- No special characters after normalization.
+- No extension.
+- No landline numbers.
+- No obviously invalid repeated/sequential numbers.
+
+Examples of VALID numbers:
+
+9876543210
+9123456789
+8123456789
+7012345678
+
+Examples of INVALID numbers:
+
+1234567890       → does not begin with 6/7/8/9
+5123456789       → does not begin with 6/7/8/9
+987654321        → only 9 digits
+98765432101      → 11 digits
+98765ABCDE0      → contains letters
+1234567890       → invalid prefix
+0000000000       → invalid
+9999999999       → reject as obviously invalid/repeated number
+
+==================================================
+NORMALIZATION
+==================================================
+
+The Excel may contain mobile numbers in common formats such as:
+
+9876543210
++91 9876543210
++919876543210
+91-9876543210
+91 9876543210
+
+Normalize these into the canonical Indian 10-digit format:
+
+9876543210
+
+For future WhatsApp API use, the system should also be able to derive the international format:
+
+919876543210
+
+Do NOT store multiple inconsistent versions of the same number.
+
+The canonical stored mobile number should be the 10-digit Indian number.
+
+==================================================
+VALIDATION RESULT
+==================================================
+
+Mobile number validation must happen after Excel upload and before payroll import.
+
+For every employee row, display the validation result.
+
+Examples:
+
+VALID:
+9876543210 ✓
+
+INVALID:
+1234567890 ✕ Invalid Indian mobile number
+
+INVALID:
+987654321 ✕ Mobile number must contain 10 digits
+
+INVALID:
+98765432101 ✕ Mobile number must contain 10 digits
+
+INVALID:
+98765ABCDE0 ✕ Mobile number contains invalid characters
+
+==================================================
+ERROR VS WARNING
+==================================================
+
+A missing mobile number should be a WARNING because the employee's payslip can still be generated.
+
+Example:
+
+⚠ Mobile number not provided — WhatsApp delivery will not be available.
+
+An INVALID mobile number that is present in the Excel should be a BLOCKING ERROR for WhatsApp readiness, but should NOT prevent the payroll record itself from being imported.
+
+Therefore distinguish between:
+
+PAYROLL IMPORT STATUS:
+Valid
+
+WHATSAPP DELIVERY STATUS:
+Invalid mobile number
+
+The administrator should be able to import the payroll while clearly seeing that this employee cannot receive the future WhatsApp payslip until the number is corrected.
+
+However, the invalid mobile number must NOT be silently accepted as valid.
+
+==================================================
+SUMMARY
+==================================================
+
+After validation, show a summary such as:
+
+125 employees detected
+
+120 valid mobile numbers
+3 missing mobile numbers
+2 invalid mobile numbers
+
+Payroll errors: 0
+WhatsApp readiness warnings/errors: 5
+
+The administrator should be able to identify the exact employee rows affected.
+
+Provide an easy-to-understand validation message for each affected row.
+
+==================================================
+DUPLICATE MOBILE NUMBERS
+==================================================
+
+Also check for duplicate mobile numbers within the uploaded payroll.
+
+If the same mobile number appears for multiple employees:
+
+Show a WARNING, not a blocking payroll error.
+
+Example:
+
+⚠ Mobile number 9876543210 is associated with multiple employees.
+
+Do not automatically reject the payroll because families or shared numbers may legitimately exist.
+
+==================================================
+IMPORTANT
+==================================================
+
+Do not rely only on frontend validation.
+
+Perform mobile number normalization and validation on the server/backend before accepting the payroll import.
+
+Use a single reusable mobile-number validation utility so the exact same validation can later be used by the WhatsApp sending module.
+
+Do not send any WhatsApp messages in Stage 2.
+
+Test the validation with:
+
+9876543210       → valid
++91 9876543210   → normalize and valid
++919876543210    → normalize and valid
+91-9876543210    → normalize and valid
+1234567890       → invalid
+5123456789       → invalid
+987654321        → invalid
+98765432101      → invalid
+98765ABCDE0      → invalid
+0000000000       → invalid
+9999999999       → invalid
+blank            → warning
+
+Report the mobile validation results separately from payroll validation.

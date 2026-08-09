@@ -42,6 +42,7 @@ export * from './payrollUploadUrlRequest';
 export * from './payrollValidationInput';
 export * from './payrollValidationResult';
 export * from './payrollValidationRow';
+export * from './payrollValidationRowMobileStatus';
 export * from './payrollValidationRowStatus';
 export * from './payrollValidationSummary';
 export * from './successResponse';

@@ -4,6 +4,7 @@
  * Api
  * OpenAPI spec version: 2.0
  */
+import type { PayrollValidationRowMobileStatus } from './payrollValidationRowMobileStatus';
 import type { PayrollValidationRowStatus } from './payrollValidationRowStatus';
 
 export interface PayrollValidationRow {
@@ -14,6 +15,7 @@ export interface PayrollValidationRow {
   employeeName?: string | null;
   /** @nullable */
   mobileNumber?: string | null;
+  mobileStatus?: PayrollValidationRowMobileStatus;
   /** @nullable */
   designation?: string | null;
   /** @nullable */

@@ -19,6 +19,7 @@ import { requireAuth } from '../middlewares/requireAuth';
 import { createAuditLog } from '../lib/audit';
 import { ObjectStorageService } from '../lib/objectStorage';
 import { parseExcelBuffer, normalizeSalaryValue, addDecimals } from '../lib/excelParser';
+import { validateIndianMobile } from '../lib/mobileValidator';
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -136,6 +137,7 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
 
     // Validate rows — no Employee Master lookup
     const seenCodes = new Set<string>();
+    const seenMobiles = new Map<string, string>(); // normalized → employeeCode
     const duplicateIds: string[] = [];
     let totalGross = '0.00';
     let totalDeductions = '0.00';
@@ -143,6 +145,9 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
     let withWarnings = 0;
     let withErrors = 0;
     let validCount = 0;
+    let validMobileCount = 0;
+    let missingMobileCount = 0;
+    let invalidMobileCount = 0;
 
     const rows = parsed.rows.map((row, idx) => {
       const rowIndex = idx + 2; // Excel row number (1-based header + 1)
@@ -156,7 +161,7 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
       const employeeName = columnMapping.employeeName
         ? String(row[columnMapping.employeeName] ?? '').trim()
         : '';
-      const mobileNumber = columnMapping.mobile
+      const mobileRaw = columnMapping.mobile
         ? String(row[columnMapping.mobile] ?? '').trim()
         : '';
       const designation = columnMapping.designation
@@ -186,10 +191,33 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
         errors.push('Employee Name is required');
       }
 
-      // ── Recommended: Mobile number ──────────────────────────────────────────
-      // Missing mobile is a warning only — import still proceeds
-      if (!mobileNumber) {
-        warnings.push('Mobile number is missing. WhatsApp delivery will not be available for this employee.');
+      // ── Mobile number — validate & normalize ────────────────────────────────
+      // Missing → warning only (non-blocking)
+      // Invalid → warning only (payroll import still proceeds; WhatsApp delivery blocked)
+      // Duplicate within file → warning only
+      const mobileResult = validateIndianMobile(mobileRaw);
+      let mobileNumber: string | null = null;
+      let mobileStatus: 'valid' | 'missing' | 'invalid';
+
+      if (!mobileRaw) {
+        mobileStatus = 'missing';
+        missingMobileCount++;
+        warnings.push('Mobile number not provided — WhatsApp delivery will not be available.');
+      } else if (mobileResult.valid) {
+        mobileStatus = 'valid';
+        mobileNumber = mobileResult.normalized;
+        validMobileCount++;
+        // Duplicate mobile within this file
+        const existingOwner = seenMobiles.get(mobileResult.normalized);
+        if (existingOwner) {
+          warnings.push(`Mobile number ${mobileResult.normalized} is shared with employee ${existingOwner} — WhatsApp delivery may be ambiguous.`);
+        } else {
+          seenMobiles.set(mobileResult.normalized, employeeCode || `row ${rowIndex}`);
+        }
+      } else {
+        mobileStatus = 'invalid';
+        invalidMobileCount++;
+        warnings.push(`Invalid mobile number: ${mobileResult.reason}`);
       }
 
       // ── Payroll salary fields ───────────────────────────────────────────────
@@ -237,7 +265,8 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
         rowIndex,
         employeeCode:  employeeCode  || null,
         employeeName:  employeeName  || null,
-        mobileNumber:  mobileNumber  || null,
+        mobileNumber,
+        mobileStatus,
         designation:   designation   || null,
         branch:        branch        || null,
         grossSalary,
@@ -259,6 +288,9 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
         totalGross,
         totalDeductions,
         totalNet,
+        validMobileCount,
+        missingMobileCount,
+        invalidMobileCount,
       },
       unmappedColumns,
       duplicateIds,
@@ -330,9 +362,12 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
       const employeeName = columnMapping.employeeName
         ? String(row[columnMapping.employeeName] ?? '').trim()
         : '';
-      const mobileNumber = columnMapping.mobile
-        ? String(row[columnMapping.mobile] ?? '').trim() || null
-        : null;
+      // Normalize + validate mobile; only store if valid
+      const mobileRaw = columnMapping.mobile
+        ? String(row[columnMapping.mobile] ?? '').trim()
+        : '';
+      const mobileResult = validateIndianMobile(mobileRaw);
+      const mobileNumber = mobileResult.valid ? mobileResult.normalized : null;
       const email = columnMapping.email
         ? String(row[columnMapping.email] ?? '').trim() || null
         : null;

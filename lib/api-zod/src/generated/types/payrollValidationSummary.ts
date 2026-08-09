@@ -13,4 +13,7 @@ export interface PayrollValidationSummary {
   totalGross: string;
   totalDeductions: string;
   totalNet: string;
+  validMobileCount: number;
+  missingMobileCount: number;
+  invalidMobileCount: number;
 }

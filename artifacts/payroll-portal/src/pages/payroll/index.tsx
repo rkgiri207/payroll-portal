@@ -489,6 +489,30 @@ export default function PayrollWizardPage() {
               </div>
             </div>
 
+            {/* WhatsApp Readiness Summary */}
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+              <p className="font-medium text-blue-800 dark:text-blue-200 text-sm mb-3">📱 WhatsApp Readiness</p>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-600">{validationResult.summary.validMobileCount ?? 0}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Valid mobile numbers</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-yellow-600">{validationResult.summary.missingMobileCount ?? 0}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Missing mobile numbers</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-red-600">{validationResult.summary.invalidMobileCount ?? 0}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Invalid mobile numbers</p>
+                </div>
+              </div>
+              {(validationResult.summary.missingMobileCount > 0 || validationResult.summary.invalidMobileCount > 0) && (
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-3">
+                  Payroll import will proceed. Affected employees will not receive WhatsApp payslips until mobile numbers are corrected.
+                </p>
+              )}
+            </div>
+
             <div className="flex gap-8 justify-center py-4 border-y">
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">Total Gross</p>
@@ -524,7 +548,17 @@ export default function PayrollWizardPage() {
                       <TableCell>{row.rowIndex}</TableCell>
                       <TableCell className="font-medium">{row.employeeCode || '—'}</TableCell>
                       <TableCell>{row.employeeName || '—'}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{row.mobileNumber || '—'}</TableCell>
+                      <TableCell className="text-sm">
+                        {row.mobileStatus === 'valid' ? (
+                          <span className="text-green-700 dark:text-green-400 font-mono">{row.mobileNumber} ✓</span>
+                        ) : row.mobileStatus === 'missing' ? (
+                          <span className="text-yellow-600 dark:text-yellow-400">— ⚠</span>
+                        ) : (
+                          <span className="text-red-600 dark:text-red-400" title={row.warnings?.find((w: string) => w.startsWith('Invalid mobile')) || 'Invalid mobile'}>
+                            {row.mobileNumber || '—'} ✕
+                          </span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right">{formatINR(row.grossSalary)}</TableCell>
                       <TableCell className="text-right">{formatINR(row.totalDeductions)}</TableCell>
                       <TableCell className="text-right font-bold">{formatINR(row.netSalary)}</TableCell>

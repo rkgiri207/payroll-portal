@@ -463,19 +463,19 @@ export default function PayrollWizardPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="p-4 bg-muted/30 rounded-md border text-center">
                 <p className="text-sm text-muted-foreground">Total Rows</p>
-                <p className="text-2xl font-bold">{validationResult.summary.totalRows}</p>
+                <p className="text-2xl font-bold">{validationResult.summary.total}</p>
               </div>
               <div className="p-4 bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-900 rounded-md border text-center">
                 <p className="text-sm text-green-700 dark:text-green-400">Valid</p>
-                <p className="text-2xl font-bold text-green-700 dark:text-green-400">{validationResult.summary.validRows}</p>
+                <p className="text-2xl font-bold text-green-700 dark:text-green-400">{validationResult.summary.valid}</p>
               </div>
               <div className="p-4 bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-900 rounded-md border text-center">
                 <p className="text-sm text-yellow-700 dark:text-yellow-400">Warnings</p>
-                <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{validationResult.summary.warningRows}</p>
+                <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">{validationResult.summary.withWarnings}</p>
               </div>
               <div className="p-4 bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900 rounded-md border text-center">
                 <p className="text-sm text-red-700 dark:text-red-400">Errors</p>
-                <p className="text-2xl font-bold text-red-700 dark:text-red-400">{validationResult.summary.errorRows}</p>
+                <p className="text-2xl font-bold text-red-700 dark:text-red-400">{validationResult.summary.withErrors}</p>
               </div>
             </div>
 
@@ -510,12 +510,12 @@ export default function PayrollWizardPage() {
                 <TableBody>
                   {validationResult.rows.slice(0, 100).map((row: any, i: number) => (
                     <TableRow key={i} className={row.errors.length > 0 ? "bg-red-50/50 dark:bg-red-950/20" : row.warnings.length > 0 ? "bg-yellow-50/50 dark:bg-yellow-950/20" : ""}>
-                      <TableCell>{row.rowNumber}</TableCell>
-                      <TableCell className="font-medium">{row.data.employeeId || '—'}</TableCell>
-                      <TableCell>{row.data.employeeName || '—'}</TableCell>
-                      <TableCell className="text-right">{formatINR(row.data.grossSalary)}</TableCell>
-                      <TableCell className="text-right">{formatINR(row.data.totalDeductions || (row.data.pf + row.data.esi + row.data.tds + row.data.otherDeductions))}</TableCell>
-                      <TableCell className="text-right font-bold">{formatINR(row.data.netSalary)}</TableCell>
+                      <TableCell>{row.rowIndex}</TableCell>
+                      <TableCell className="font-medium">{row.employeeCode || '—'}</TableCell>
+                      <TableCell>{row.employeeName || '—'}</TableCell>
+                      <TableCell className="text-right">{formatINR(row.grossSalary)}</TableCell>
+                      <TableCell className="text-right">{formatINR(row.totalDeductions)}</TableCell>
+                      <TableCell className="text-right font-bold">{formatINR(row.netSalary)}</TableCell>
                       <TableCell>
                         {row.errors.length > 0 ? (
                           <div className="flex flex-col gap-1">
@@ -546,11 +546,11 @@ export default function PayrollWizardPage() {
           </CardContent>
           <CardFooter className="justify-between border-t p-4">
             <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
-            {validationResult.summary.errorRows > 0 ? (
+            {validationResult.summary.withErrors > 0 ? (
               <Button disabled variant="secondary" data-testid="btn-import-disabled">
                 Fix errors to continue
               </Button>
-            ) : validationResult.summary.warningRows > 0 ? (
+            ) : validationResult.summary.withWarnings > 0 ? (
               <Button onClick={handleStep3Next} className="bg-yellow-600 hover:bg-yellow-700 text-white" data-testid="btn-next-3-warning">
                 Continue with Warnings
                 <ChevronRight className="ml-2 h-4 w-4" />
@@ -580,11 +580,11 @@ export default function PayrollWizardPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Valid Employees</p>
-                  <p className="font-semibold text-xl">{validationResult.summary.validRows + validationResult.summary.warningRows}</p>
+                  <p className="font-semibold text-xl">{validationResult.summary.valid + validationResult.summary.withWarnings}</p>
                 </div>
-                {validationResult.summary.warningRows > 0 && (
+                {validationResult.summary.withWarnings > 0 && (
                   <div>
-                    <p className="text-sm text-yellow-600">Importing with {validationResult.summary.warningRows} warnings</p>
+                    <p className="text-sm text-yellow-600">Importing with {validationResult.summary.withWarnings} warnings</p>
                   </div>
                 )}
               </div>
@@ -607,7 +607,7 @@ export default function PayrollWizardPage() {
           <CardFooter className="justify-between border-t p-4">
             <Button variant="outline" onClick={() => setStep(3)} disabled={isWorking}>Cancel</Button>
             <Button 
-              onClick={() => handleImport(validationResult.summary.warningRows > 0)} 
+              onClick={() => handleImport(validationResult.summary.withWarnings > 0)} 
               disabled={isWorking}
               data-testid="btn-confirm-import"
             >

@@ -1,0 +1,77 @@
+There is a runtime error in Stage 2 during the payroll Excel import workflow:
+
+"Cannot read properties of undefined (reading 'employeeId')"
+
+Do NOT work around this by changing the test Excel file.
+
+Diagnose and fix the underlying application bug.
+
+IMPORTANT:
+Do not modify unrelated Stage 1 functionality.
+Do not weaken validation.
+Do not silently ignore missing employee IDs.
+
+Investigate the complete Excel upload → column mapping → preview → validation workflow.
+
+Specifically inspect:
+
+1. The Excel parsing result.
+2. The normalized row data structure.
+3. The column-mapping data structure.
+4. The code that accesses employeeId.
+5. The preview table.
+6. The validation functions.
+7. Any API response transformation between backend and frontend.
+8. Any code that assumes a payroll row or mapped field always exists.
+
+Find the exact line where an undefined object is being accessed.
+
+The application must handle these situations safely:
+
+- Excel uploaded successfully.
+- Excel contains valid Employee ID column.
+- Employee ID column is not mapped yet.
+- Employee ID column is missing.
+- A row has an empty Employee ID.
+- A mapped column does not exist in a particular row.
+- Excel contains additional/unmapped columns.
+
+Required behavior:
+
+A missing Employee ID must produce a user-friendly validation error such as:
+
+"Employee ID is required."
+
+It must NEVER produce a JavaScript runtime error such as:
+
+"Cannot read properties of undefined..."
+
+The UI should remain usable after the validation error.
+
+Also ensure that:
+
+- employeeId is consistently named throughout the application.
+- The frontend and backend use the same field name.
+- Column mapping does not rely on array indexes that can become undefined.
+- Preview rendering handles missing values safely.
+- Validation handles missing mappings safely.
+
+After fixing:
+
+1. Restart/rebuild the application.
+2. Test the same Excel file that caused the error.
+3. Test with a valid Employee ID column.
+4. Test with Employee ID missing.
+5. Test with one blank Employee ID.
+6. Test with an unmapped additional column.
+7. Confirm that errors are displayed as validation messages rather than runtime exceptions.
+8. Check the browser console and server logs for remaining errors.
+
+Do not proceed to Stage 3.
+
+Report:
+- Exact root cause.
+- File(s) changed.
+- Fix implemented.
+- Tests performed.
+- Whether the original failing workflow now works.

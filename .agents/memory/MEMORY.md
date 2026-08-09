@@ -1,0 +1,5 @@
+- [OpenAPI Zod naming collision](openapi-zod-naming.md) — component schema names must not match Orval operation body names (e.g., avoid `RequestUploadUrlBody` as a component when operationId is `requestUploadUrl`)
+- [DB push TTY requirement](db-push-tty.md) — drizzle-kit push requires interactive TTY; create new tables with raw SQL via executeSql() instead
+- [Sessions table manual creation](sessions-table.md) — connect-pg-simple createTableIfMissing requires CREATE TABLE rights; create manually if missing
+- [Object storage sidecar transient failures](object-storage-sidecar.md) — sidecar at 127.0.0.1:1106 can return 500/timeout transiently; retry after workflow restart usually resolves it
+- [Admin bcrypt seed](admin-seed.md) — initial admin must be seeded with a real bcrypt hash generated from the api-server's node_modules, not a placeholder

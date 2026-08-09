@@ -1,4 +1,4 @@
-import * as React from "react"
+import { useEffect, ReactNode } from "react"
 import { Link, useLocation } from "wouter"
 import { 
   Building2, 
@@ -7,7 +7,8 @@ import {
   FileText, 
   Settings, 
   LogOut,
-  LayoutDashboard 
+  LayoutDashboard,
+  History
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -18,11 +19,12 @@ import { useQueryClient } from "@tanstack/react-query"
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/employees", label: "Employees", icon: Users },
-  { href: "/payroll", label: "Payroll Runs", icon: Banknote },
+  { href: "/payroll", label: "Upload Payroll", icon: Banknote },
+  { href: "/payroll/history", label: "Payroll History", icon: History },
   { href: "/payslips", label: "Payslips", icon: FileText },
 ]
 
-export function LayoutShell({ children }: { children: React.ReactNode }) {
+export function LayoutShell({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation()
   const queryClient = useQueryClient()
   const { data: user, isLoading: isUserLoading, isError: isUserError } = useGetMe()
@@ -38,7 +40,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   })
 
   // If not logged in and we're done checking, redirect
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isUserLoading && (isUserError || !user) && location !== "/login") {
       setLocation("/login")
     }
@@ -72,7 +74,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
         
         <nav className="flex-1 overflow-auto py-4 px-3 space-y-1">
           {NAV_ITEMS.map((item) => {
-            const isActive = location === item.href
+            const isActive = location === item.href || (item.href === '/payroll' && location.startsWith('/payroll/runs/'));
             return (
               <Link 
                 key={item.href} 

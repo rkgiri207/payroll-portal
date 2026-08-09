@@ -1,46 +1,47 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
-  title: Api
-  version: 0.1.0
-  description: Payroll Portal API specification
+  title: Payroll Portal API
+  version: "2.0"
+
 servers:
   - url: /api
-    description: Base API path
+
 tags:
   - name: health
-    description: Health operations
   - name: auth
-    description: Authentication operations
   - name: company-settings
-    description: Company settings management
   - name: dashboard
-    description: Dashboard statistics
   - name: audit-logs
-    description: Audit log operations
   - name: storage
-    description: Object storage operations
+  - name: employees
+  - name: payroll
+  - name: payroll-runs
 
 paths:
+  # ─────────────────────────────────────────────
+  # Health
+  # ─────────────────────────────────────────────
   /healthz:
     get:
-      operationId: healthCheck
+      operationId: getHealth
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
-          description: Healthy
+          description: OK
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
+  # ─────────────────────────────────────────────
+  # Auth
+  # ─────────────────────────────────────────────
   /auth/login:
     post:
       operationId: login
       tags: [auth]
-      summary: Login with email and password
+      summary: Log in
       requestBody:
         required: true
         content:
@@ -49,7 +50,7 @@ paths:
               $ref: "#/components/schemas/LoginInput"
       responses:
         "200":
-          description: Login successful
+          description: Logged in
           content:
             application/json:
               schema:
@@ -65,10 +66,10 @@ paths:
     post:
       operationId: logout
       tags: [auth]
-      summary: Logout current session
+      summary: Log out
       responses:
         "200":
-          description: Logout successful
+          description: Logged out
           content:
             application/json:
               schema:
@@ -78,7 +79,7 @@ paths:
     get:
       operationId: getMe
       tags: [auth]
-      summary: Get current authenticated user
+      summary: Get current user
       responses:
         "200":
           description: Current user
@@ -93,6 +94,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  # ─────────────────────────────────────────────
+  # Company Settings
+  # ─────────────────────────────────────────────
   /company-settings:
     get:
       operationId: getCompanySettings
@@ -106,7 +110,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/CompanySettings"
         "404":
-          description: No settings configured
+          description: Not found
           content:
             application/json:
               schema:
@@ -123,17 +127,11 @@ paths:
               $ref: "#/components/schemas/CompanySettingsUpdate"
       responses:
         "200":
-          description: Updated company settings
+          description: Updated
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CompanySettings"
-        "400":
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiError"
 
   /company-settings/logo:
     delete:
@@ -148,6 +146,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/CompanySettings"
 
+  # ─────────────────────────────────────────────
+  # Dashboard
+  # ─────────────────────────────────────────────
   /dashboard/stats:
     get:
       operationId: getDashboardStats
@@ -155,28 +156,31 @@ paths:
       summary: Get dashboard statistics
       responses:
         "200":
-          description: Dashboard statistics
+          description: Dashboard stats
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/DashboardStats"
 
+  # ─────────────────────────────────────────────
+  # Audit Logs
+  # ─────────────────────────────────────────────
   /audit-logs:
     get:
       operationId: getAuditLogs
       tags: [audit-logs]
-      summary: Get recent audit log entries
+      summary: List audit logs
       parameters:
         - name: limit
           in: query
           schema:
             type: number
-            default: 20
             minimum: 1
             maximum: 100
+            default: 20
       responses:
         "200":
-          description: Audit log entries
+          description: Audit logs
           content:
             application/json:
               schema:
@@ -184,11 +188,14 @@ paths:
                 items:
                   $ref: "#/components/schemas/AuditLog"
 
+  # ─────────────────────────────────────────────
+  # Storage
+  # ─────────────────────────────────────────────
   /storage/uploads/request-url:
     post:
       operationId: requestUploadUrl
       tags: [storage]
-      summary: Request a presigned upload URL
+      summary: Request a presigned upload URL (images)
       requestBody:
         required: true
         content:
@@ -197,23 +204,17 @@ paths:
               $ref: "#/components/schemas/UploadUrlRequest"
       responses:
         "200":
-          description: Presigned upload URL
+          description: Upload URL
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/UploadUrlResponse"
-        "400":
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiError"
 
   /storage/objects/{objectPath}:
     get:
       operationId: getStorageObject
       tags: [storage]
-      summary: Serve a stored object
+      summary: Download a stored object
       parameters:
         - name: objectPath
           in: path
@@ -222,10 +223,366 @@ paths:
             type: string
       responses:
         "200":
-          description: Object content
-        "404":
-          description: Object not found
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
 
+  # ─────────────────────────────────────────────
+  # Employees
+  # ─────────────────────────────────────────────
+  /employees:
+    get:
+      operationId: listEmployees
+      tags: [employees]
+      summary: List employees
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: branch
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE]
+        - name: page
+          in: query
+          schema:
+            type: number
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: number
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        "200":
+          description: Employee list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployeeListResponse"
+    post:
+      operationId: createEmployee
+      tags: [employees]
+      summary: Create employee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "409":
+          description: Duplicate employee code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /employees/{id}:
+    get:
+      operationId: getEmployee
+      tags: [employees]
+      summary: Get employee by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Employee
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    patch:
+      operationId: updateEmployee
+      tags: [employees]
+      summary: Update employee
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeUpdate"
+      responses:
+        "200":
+          description: Updated employee
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Duplicate employee code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /employees/{id}/status:
+    patch:
+      operationId: updateEmployeeStatus
+      tags: [employees]
+      summary: Activate or deactivate employee
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeStatusInput"
+      responses:
+        "200":
+          description: Updated employee
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  # ─────────────────────────────────────────────
+  # Payroll Upload Workflow
+  # ─────────────────────────────────────────────
+  /payroll/request-upload-url:
+    post:
+      operationId: requestPayrollUploadUrl
+      tags: [payroll]
+      summary: Request presigned URL for payroll Excel upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayrollUploadUrlRequest"
+      responses:
+        "200":
+          description: Upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+
+  /payroll/parse-excel:
+    post:
+      operationId: parsePayrollExcel
+      tags: [payroll]
+      summary: Parse uploaded Excel — returns sheet names and headers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParseExcelInput"
+      responses:
+        "200":
+          description: Parse result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParseExcelResult"
+
+  /payroll/validate:
+    post:
+      operationId: validatePayroll
+      tags: [payroll]
+      summary: Validate mapped payroll data against employee master
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayrollValidationInput"
+      responses:
+        "200":
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayrollValidationResult"
+
+  /payroll/import:
+    post:
+      operationId: importPayroll
+      tags: [payroll]
+      summary: Confirm and import payroll run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayrollImportInput"
+      responses:
+        "201":
+          description: Payroll run created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayrollImportResult"
+
+  /payroll/column-mapping:
+    get:
+      operationId: getColumnMapping
+      tags: [payroll]
+      summary: Get last saved column mapping
+      responses:
+        "200":
+          description: Saved mapping (or null if none)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ColumnMappingResponse"
+    put:
+      operationId: saveColumnMapping
+      tags: [payroll]
+      summary: Save column mapping for future uploads
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ColumnMappingInput"
+      responses:
+        "200":
+          description: Saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ColumnMappingResponse"
+
+  # ─────────────────────────────────────────────
+  # Payroll Runs (History)
+  # ─────────────────────────────────────────────
+  /payroll-runs:
+    get:
+      operationId: listPayrollRuns
+      tags: [payroll-runs]
+      summary: List all payroll runs
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: number
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: number
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Payroll runs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayrollRunListResponse"
+
+  /payroll-runs/{id}:
+    get:
+      operationId: getPayrollRun
+      tags: [payroll-runs]
+      summary: Get payroll run with records
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Payroll run detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayrollRunDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /payroll-runs/{id}/cancel:
+    patch:
+      operationId: cancelPayrollRun
+      tags: [payroll-runs]
+      summary: Cancel a payroll run
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Cancelled run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayrollRun"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+# ─────────────────────────────────────────────
+# Schemas
+# ─────────────────────────────────────────────
 components:
   schemas:
     HealthStatus:
@@ -257,7 +614,6 @@ components:
           type: string
         password:
           type: string
-          minLength: 1
 
     AuthUser:
       type: object
@@ -300,7 +656,6 @@ components:
       properties:
         companyName:
           type: string
-          minLength: 1
         logoPath:
           type: ["string", "null"]
         address:
@@ -367,3 +722,415 @@ components:
           type: string
         objectPath:
           type: string
+        metadata:
+          type: object
+          properties:
+            name:
+              type: string
+            size:
+              type: number
+            contentType:
+              type: string
+
+    # ─── Employees ───────────────────────────────
+    Employee:
+      type: object
+      required: [id, employeeCode, employeeName, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: number
+        employeeCode:
+          type: string
+        employeeName:
+          type: string
+        mobileNumber:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        designation:
+          type: ["string", "null"]
+        branch:
+          type: ["string", "null"]
+        joiningDate:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    EmployeeListResponse:
+      type: object
+      required: [employees, total, page, limit]
+      properties:
+        employees:
+          type: array
+          items:
+            $ref: "#/components/schemas/Employee"
+        total:
+          type: number
+        page:
+          type: number
+        limit:
+          type: number
+
+    EmployeeInput:
+      type: object
+      required: [employeeCode, employeeName]
+      properties:
+        employeeCode:
+          type: string
+        employeeName:
+          type: string
+        mobileNumber:
+          type: string
+        email:
+          type: string
+        designation:
+          type: string
+        branch:
+          type: string
+        joiningDate:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+
+    EmployeeUpdate:
+      type: object
+      properties:
+        employeeCode:
+          type: string
+        employeeName:
+          type: string
+        mobileNumber:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        designation:
+          type: ["string", "null"]
+        branch:
+          type: ["string", "null"]
+        joiningDate:
+          type: ["string", "null"]
+
+    EmployeeStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+
+    # ─── Payroll Upload ───────────────────────────
+    PayrollUploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+        size:
+          type: number
+        contentType:
+          type: string
+
+    ParseExcelInput:
+      type: object
+      required: [objectPath]
+      properties:
+        objectPath:
+          type: string
+        sheetName:
+          type: string
+
+    ParseExcelResult:
+      type: object
+      required: [sheets, headers, rowCount]
+      properties:
+        sheets:
+          type: array
+          items:
+            type: string
+        selectedSheet:
+          type: string
+        headers:
+          type: array
+          items:
+            type: string
+        rowCount:
+          type: number
+
+    ColumnMapping:
+      type: object
+      properties:
+        employeeId:
+          type: string
+        employeeName:
+          type: string
+        basic:
+          type: string
+        da:
+          type: string
+        hra:
+          type: string
+        otherEarnings:
+          type: string
+        grossSalary:
+          type: string
+        pf:
+          type: string
+        esi:
+          type: string
+        tds:
+          type: string
+        otherDeductions:
+          type: string
+        netSalary:
+          type: string
+
+    PayrollValidationInput:
+      type: object
+      required: [objectPath, sheetName, columnMapping, payrollMonth, payrollYear]
+      properties:
+        objectPath:
+          type: string
+        sheetName:
+          type: string
+        columnMapping:
+          $ref: "#/components/schemas/ColumnMapping"
+        payrollMonth:
+          type: number
+          minimum: 1
+          maximum: 12
+        payrollYear:
+          type: number
+          minimum: 2000
+          maximum: 2100
+
+    PayrollValidationRow:
+      type: object
+      required: [rowIndex, status, errors, warnings]
+      properties:
+        rowIndex:
+          type: number
+        employeeCode:
+          type: ["string", "null"]
+        employeeName:
+          type: ["string", "null"]
+        employeeDbId:
+          type: ["number", "null"]
+        grossSalary:
+          type: ["string", "null"]
+        totalDeductions:
+          type: ["string", "null"]
+        netSalary:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [valid, warning, error]
+        errors:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
+
+    PayrollValidationSummary:
+      type: object
+      required: [total, valid, withWarnings, withErrors, totalGross, totalDeductions, totalNet]
+      properties:
+        total:
+          type: number
+        valid:
+          type: number
+        withWarnings:
+          type: number
+        withErrors:
+          type: number
+        totalGross:
+          type: string
+        totalDeductions:
+          type: string
+        totalNet:
+          type: string
+
+    PayrollValidationResult:
+      type: object
+      required: [rows, summary, unmappedColumns, duplicateIds]
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayrollValidationRow"
+        summary:
+          $ref: "#/components/schemas/PayrollValidationSummary"
+        unmappedColumns:
+          type: array
+          items:
+            type: string
+        duplicateIds:
+          type: array
+          items:
+            type: string
+        existingRunWarning:
+          type: ["string", "null"]
+
+    PayrollImportInput:
+      type: object
+      required: [objectPath, fileName, sheetName, columnMapping, payrollMonth, payrollYear]
+      properties:
+        objectPath:
+          type: string
+        fileName:
+          type: string
+        sheetName:
+          type: string
+        columnMapping:
+          $ref: "#/components/schemas/ColumnMapping"
+        payrollMonth:
+          type: number
+          minimum: 1
+          maximum: 12
+        payrollYear:
+          type: number
+          minimum: 2000
+          maximum: 2100
+        confirmedWithWarnings:
+          type: boolean
+
+    PayrollImportResult:
+      type: object
+      required: [payrollRunId, employeeCount, totalGross, totalDeductions, totalNet]
+      properties:
+        payrollRunId:
+          type: number
+        employeeCount:
+          type: number
+        totalGross:
+          type: string
+        totalDeductions:
+          type: string
+        totalNet:
+          type: string
+
+    ColumnMappingInput:
+      type: object
+      required: [mapping]
+      properties:
+        mapping:
+          $ref: "#/components/schemas/ColumnMapping"
+
+    ColumnMappingResponse:
+      type: object
+      required: [mapping]
+      properties:
+        mapping:
+          oneOf:
+            - $ref: "#/components/schemas/ColumnMapping"
+            - type: "null"
+
+    # ─── Payroll Runs ─────────────────────────────
+    PayrollRun:
+      type: object
+      required: [id, payrollMonth, payrollYear, originalFileName, employeeCount, totalGross, totalDeductions, totalNet, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: number
+        payrollMonth:
+          type: number
+        payrollYear:
+          type: number
+        originalFileName:
+          type: string
+        fileStoragePath:
+          type: string
+        uploadedBy:
+          type: ["number", "null"]
+        uploadedByName:
+          type: ["string", "null"]
+        uploadTimestamp:
+          type: string
+        employeeCount:
+          type: number
+        totalGross:
+          type: string
+        totalDeductions:
+          type: string
+        totalNet:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, VALIDATED, IMPORTED, CANCELLED]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    PayrollRecord:
+      type: object
+      required: [id, payrollRunId, employeeId]
+      properties:
+        id:
+          type: number
+        payrollRunId:
+          type: number
+        employeeId:
+          type: number
+        employeeCode:
+          type: string
+        employeeName:
+          type: string
+        basic:
+          type: ["string", "null"]
+        da:
+          type: ["string", "null"]
+        hra:
+          type: ["string", "null"]
+        otherEarnings:
+          type: ["string", "null"]
+        grossSalary:
+          type: ["string", "null"]
+        pf:
+          type: ["string", "null"]
+        esi:
+          type: ["string", "null"]
+        tds:
+          type: ["string", "null"]
+        otherDeductions:
+          type: ["string", "null"]
+        netSalary:
+          type: ["string", "null"]
+        additionalComponents:
+          type: ["object", "null"]
+          additionalProperties:
+            type: string
+
+    PayrollRunDetail:
+      allOf:
+        - $ref: "#/components/schemas/PayrollRun"
+        - type: object
+          required: [records]
+          properties:
+            records:
+              type: array
+              items:
+                $ref: "#/components/schemas/PayrollRecord"
+
+    PayrollRunListResponse:
+      type: object
+      required: [runs, total, page, limit]
+      properties:
+        runs:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayrollRun"
+        total:
+          type: number
+        page:
+          type: number
+        limit:
+          type: number

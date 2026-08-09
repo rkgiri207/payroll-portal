@@ -1,0 +1,767 @@
+Continue development of the existing "Payroll Portal" application.
+
+IMPORTANT:
+Stage 1 has already been built.
+
+DO NOT rebuild the application from scratch.
+DO NOT replace the existing authentication system.
+DO NOT modify unrelated Stage 1 functionality.
+
+First inspect the existing codebase, database schema, authentication implementation, company settings, audit logging and UI structure. Build Stage 2 on top of the existing architecture.
+
+==================================================
+STAGE 2 OBJECTIVE
+==================================================
+
+Implement:
+
+1. Employee Master
+2. Payroll Run management
+3. Payroll Excel upload
+4. Excel column mapping
+5. Payroll data preview
+6. Validation and error reporting
+7. Payroll import confirmation
+8. Payroll history foundation
+
+The payroll Excel file will contain employee salary/payroll information that is ALREADY CALCULATED.
+
+IMPORTANT:
+
+The application is NOT responsible for calculating salary, PF, ESI, TDS or other statutory deductions at this stage.
+
+The Excel file is the source of the final payroll figures.
+
+The application must import, validate and store the figures accurately.
+
+==================================================
+1. EMPLOYEE MASTER
+==================================================
+
+Create a fully functional Employees module.
+
+Navigation:
+
+Employees
+
+The employee list should display:
+
+- Employee ID
+- Employee Name
+- Mobile Number
+- Designation
+- Branch
+- Joining Date
+- Status
+- Actions
+
+Support:
+
+- Add employee
+- Edit employee
+- View employee
+- Activate/deactivate employee
+- Search employees
+- Filter by branch
+- Filter by active/inactive status
+
+Do NOT permanently delete employees from the database.
+
+Use an Active/Inactive status instead.
+
+This is important because historical payroll records must remain associated with employees even after they leave the organization.
+
+==================================================
+2. EMPLOYEE DATA MODEL
+==================================================
+
+Create/extend the employee database table with appropriate fields.
+
+At minimum:
+
+- id
+- employee_code
+- employee_name
+- mobile_number
+- email
+- designation
+- branch
+- joining_date
+- status
+- created_at
+- updated_at
+
+Employee code must be unique.
+
+Mobile number should be stored in a normalized format suitable for future WhatsApp API use.
+
+Do not assume that every employee has an email address.
+
+Mobile number should be optional at the employee-master level, but the system must flag it as a warning when WhatsApp delivery is later required.
+
+==================================================
+3. EMPLOYEE MASTER VALIDATION
+==================================================
+
+When adding/editing employees:
+
+Required:
+
+- Employee ID/code
+- Employee name
+
+Validate:
+
+- Employee ID is unique
+- Employee name is not empty
+- Mobile number format if provided
+- Email format if provided
+- Joining date if provided
+
+Show user-friendly validation messages.
+
+Do not expose database errors directly.
+
+==================================================
+4. PAYROLL RUNS
+==================================================
+
+Create a Payroll Runs module.
+
+Each uploaded payroll Excel file represents one payroll run.
+
+Create a payroll_runs table containing appropriate fields such as:
+
+- id
+- payroll_month
+- payroll_year
+- original_file_name
+- uploaded_by
+- upload_timestamp
+- employee_count
+- total_gross
+- total_deductions
+- total_net
+- status
+- created_at
+- updated_at
+
+Payroll run status should support at least:
+
+- DRAFT
+- VALIDATED
+- IMPORTED
+- CANCELLED
+
+Do not generate payslips yet.
+
+==================================================
+5. PAYROLL EXCEL UPLOAD
+==================================================
+
+Create:
+
+Payroll → Upload Payroll
+
+Allow the administrator to upload:
+
+- .xlsx
+- .xls
+
+Do not accept arbitrary file types.
+
+Validate reasonable file size limits.
+
+The original uploaded filename should be recorded.
+
+The application should NOT automatically import the data immediately after upload.
+
+Instead use this workflow:
+
+Upload
+↓
+Read Excel
+↓
+Detect worksheet(s)
+↓
+Select worksheet if multiple worksheets exist
+↓
+Detect header row
+↓
+Map columns
+↓
+Preview
+↓
+Validate
+↓
+Administrator confirms
+↓
+Create Payroll Run
+↓
+Store payroll records
+
+==================================================
+6. EXCEL COLUMN MAPPING
+==================================================
+
+Do NOT assume that the Excel file always uses exact column names.
+
+Create a column-mapping interface.
+
+For example, the Excel file might contain:
+
+Employee ID
+Employee Name
+Basic
+DA
+HRA
+Gross Salary
+PF
+ESI
+TDS
+Other Deductions
+Net Salary
+
+But another month may use slightly different names.
+
+The application should:
+
+1. Read the Excel headers.
+2. Suggest mappings based on header names.
+3. Allow the administrator to manually change mappings.
+4. Clearly indicate required fields.
+5. Remember the last successful mapping for future uploads where practical.
+
+At minimum, the following payroll fields should be supported:
+
+IDENTIFICATION:
+
+- Employee ID
+- Employee Name
+
+EARNINGS:
+
+- Basic
+- DA
+- HRA
+- Other Earnings
+- Gross Salary
+
+DEDUCTIONS:
+
+- PF
+- ESI
+- TDS
+- Other Deductions
+
+FINAL:
+
+- Net Salary
+
+The system must also allow additional payroll columns to exist in the Excel file without breaking the import.
+
+Do not silently discard unknown columns.
+
+Show them as "Additional fields" or "Unmapped columns".
+
+==================================================
+7. IMPORTANT: FLEXIBLE PAYROLL COLUMNS
+==================================================
+
+The payroll Excel may contain additional salary components.
+
+Examples:
+
+- Conveyance
+- Medical Allowance
+- Special Allowance
+- Bonus
+- Incentive
+- Professional Tax
+- Loan Deduction
+- Advance
+- Other Deduction
+- Arrears
+- Overtime
+- Leave Deduction
+
+The system should NOT reject an Excel file simply because additional columns exist.
+
+Store additional payroll components in a flexible structure so they can later be displayed on the payslip.
+
+Design the data model so Stage 3 can use these components when generating PDFs.
+
+Do not hard-code the final payslip structure yet.
+
+==================================================
+8. EMPLOYEE MATCHING
+==================================================
+
+During payroll import, match payroll records to Employee Master using:
+
+PRIMARY:
+Employee ID/code
+
+Do NOT match primarily by employee name.
+
+If Employee ID is missing or doesn't match an existing employee:
+
+Show a clear validation error.
+
+Example:
+
+"Employee ID 1045 was not found in Employee Master."
+
+Do NOT automatically create an employee based on an Excel row.
+
+The administrator should be able to:
+
+- Go back and add the employee
+- Correct the Excel file
+- Cancel the import
+
+Do not silently create employees.
+
+==================================================
+9. DUPLICATE DETECTION
+==================================================
+
+Detect:
+
+- Duplicate Employee IDs within the uploaded Excel
+- Employees appearing more than once in the same payroll run
+- Duplicate payroll run for the same month/year, if applicable
+
+Do not silently overwrite existing payroll data.
+
+If a payroll run already exists for the same month/year:
+
+Show a clear warning and require explicit administrator confirmation before replacing/re-uploading.
+
+Do not delete the old payroll run automatically.
+
+==================================================
+10. PAYROLL PERIOD
+==================================================
+
+The administrator must select:
+
+Payroll Month
+Payroll Year
+
+during upload/import.
+
+Do not rely only on the filename.
+
+Example:
+
+July 2026
+
+The selected payroll period must be stored with every payroll record.
+
+==================================================
+11. PREVIEW
+==================================================
+
+After mapping columns, show a preview table before importing.
+
+Display:
+
+- Employee ID
+- Employee Name
+- Earnings
+- Deductions
+- Gross Salary
+- Net Salary
+- Validation status
+
+Allow horizontal scrolling for wide payroll files.
+
+Do not make the interface unusable when there are many payroll columns.
+
+==================================================
+12. VALIDATION
+==================================================
+
+Validate each row before import.
+
+Examples:
+
+ERRORS:
+
+- Missing Employee ID
+- Employee ID not found
+- Missing Employee Name
+- Duplicate Employee ID
+- Invalid numeric salary value
+- Invalid payroll period
+- Invalid file
+- Required column not mapped
+
+WARNINGS:
+
+- Employee has no mobile number
+- Employee has no email
+- Optional salary component is blank
+- Unmapped Excel column exists
+
+Important distinction:
+
+ERROR = payroll cannot be imported until fixed.
+
+WARNING = administrator can continue after reviewing.
+
+Show a clear summary:
+
+Example:
+
+125 employees detected
+
+118 valid
+5 warnings
+2 errors
+
+The Import button must remain disabled while blocking errors exist.
+
+==================================================
+13. NUMERIC DATA
+==================================================
+
+Salary amounts must be handled safely.
+
+Do NOT use floating-point arithmetic for stored monetary values where avoidable.
+
+Use an appropriate decimal/numeric database type.
+
+Accept common Excel formats such as:
+
+25000
+25,000
+25000.00
+
+Normalize them internally.
+
+Do not alter the actual salary values during import.
+
+The imported figures must remain exactly as provided, subject only to formatting/normalization.
+
+==================================================
+14. PAYROLL IMPORT CONFIRMATION
+==================================================
+
+After validation:
+
+Show a final confirmation screen:
+
+Payroll Period:
+July 2026
+
+Employees:
+125
+
+Gross Salary:
+₹XX,XX,XXX
+
+Total Deductions:
+₹XX,XX,XXX
+
+Net Salary:
+₹XX,XX,XXX
+
+Warnings:
+5
+
+Errors:
+0
+
+Then:
+
+[Cancel]
+[Confirm Import]
+
+Only after Confirm Import should the records be permanently associated with the payroll run.
+
+==================================================
+15. PAYROLL HISTORY
+==================================================
+
+Create a Payroll History page.
+
+Display payroll runs in a table:
+
+- Month
+- Year
+- Employee Count
+- Gross
+- Deductions
+- Net
+- Status
+- Uploaded By
+- Date
+
+Allow:
+
+- View payroll run
+- View imported employee records
+- Search/filter payroll runs
+
+Do NOT add payslip PDF generation yet.
+
+Do NOT add WhatsApp sending yet.
+
+==================================================
+16. PAYROLL RECORDS
+==================================================
+
+Create a payroll_records table linked to:
+
+- payroll_run
+- employee
+
+Store the imported salary components.
+
+At minimum include:
+
+- id
+- payroll_run_id
+- employee_id
+- basic
+- da
+- hra
+- other_earnings
+- gross_salary
+- pf
+- esi
+- tds
+- other_deductions
+- net_salary
+- additional_components
+- created_at
+- updated_at
+
+Use a flexible JSON/JSONB structure for additional components if appropriate.
+
+This is specifically to ensure Stage 3 can later generate payslips containing whatever salary components are present in the Excel file.
+
+Do NOT calculate these values.
+
+Store the values imported from Excel.
+
+==================================================
+17. ORIGINAL EXCEL FILE
+==================================================
+
+Preserve a reference to the original uploaded payroll file.
+
+Store it securely.
+
+Do not make uploaded payroll Excel files publicly accessible.
+
+Only authenticated administrators should be able to access them.
+
+Use secure storage appropriate for the Replit architecture.
+
+==================================================
+18. SECURITY
+==================================================
+
+Maintain all Stage 1 security practices.
+
+Important:
+
+- Payroll data is sensitive.
+- Uploaded Excel files must not be publicly accessible.
+- Payroll records must require authenticated admin access.
+- Validate all uploads server-side.
+- Do not trust client-side validation alone.
+- Do not expose payroll data through unauthenticated APIs.
+- Do not expose storage URLs publicly unless protected appropriately.
+
+Do not log salary information unnecessarily.
+
+Do not log passwords, API keys or secrets.
+
+==================================================
+19. AUDIT LOGGING
+==================================================
+
+Extend the existing audit logging system.
+
+Record:
+
+- Employee created
+- Employee updated
+- Employee activated/deactivated
+- Payroll Excel uploaded
+- Payroll validation completed
+- Payroll imported
+- Payroll import cancelled
+- Payroll run cancelled
+
+Include:
+
+- user
+- action
+- timestamp
+- relevant record ID
+
+Do not store unnecessary salary information in audit logs.
+
+==================================================
+20. UI/UX
+==================================================
+
+Maintain the existing Stage 1 design system.
+
+Use the existing:
+
+- Sidebar
+- Header
+- Buttons
+- Cards
+- Tables
+- Forms
+- Toasts
+- Modals
+
+Do not redesign the entire application.
+
+Employee management should be easy for non-technical office staff.
+
+Excel upload should use a clear step-by-step workflow.
+
+Suggested UI:
+
+STEP 1
+Upload Excel
+
+STEP 2
+Select worksheet / map columns
+
+STEP 3
+Preview & Validate
+
+STEP 4
+Confirm Import
+
+STEP 5
+Import Complete
+
+Show a progress indicator.
+
+==================================================
+21. EMPTY STATES
+==================================================
+
+Do not use fake employee or payroll data.
+
+If there are no employees:
+
+" No employees added yet."
+
+If there are no payroll runs:
+
+"No payroll runs yet."
+
+Provide appropriate action buttons.
+
+==================================================
+22. TESTING
+==================================================
+
+Create tests for:
+
+- Employee creation
+- Duplicate employee ID
+- Employee editing
+- Employee activation/deactivation
+- Excel upload validation
+- Invalid file rejection
+- Column mapping
+- Missing required columns
+- Duplicate Employee IDs
+- Unknown Employee IDs
+- Numeric salary parsing
+- Payroll totals
+- Payroll import
+- Duplicate payroll run detection
+- Authentication protection
+- Unauthorized access prevention
+
+Also test with a realistic sample Excel file.
+
+Do not generate fake production payroll data.
+
+==================================================
+23. IMPORTANT SCOPE LIMITATIONS
+==================================================
+
+DO NOT IMPLEMENT:
+
+- Payslip PDF generation
+- Payslip design
+- Secure 7-day links
+- WhatsApp API
+- Meta integration
+- WhatsApp template integration
+- Bulk WhatsApp sending
+- Email sending
+- PF/ESI/TDS statutory reports
+- Salary calculation engine
+- Attendance calculations
+- Leave calculations
+- Tax calculations
+- Employee self-service login
+
+These belong to later stages.
+
+==================================================
+24. STAGE 2 COMPLETION CRITERIA
+==================================================
+
+Stage 2 is complete only when:
+
+1. Admin can create employees.
+2. Admin can edit employees.
+3. Admin can activate/deactivate employees.
+4. Admin can search/filter employees.
+5. Admin can upload an Excel payroll file.
+6. Admin can select payroll month/year.
+7. Excel worksheet can be selected.
+8. Columns can be mapped.
+9. Application previews imported records.
+10. Validation identifies errors and warnings.
+11. Employee IDs are matched against Employee Master.
+12. Duplicate records are detected.
+13. Administrator can correct/cancel before import.
+14. Payroll can be confirmed and imported.
+15. Payroll history displays imported payroll runs.
+16. Payroll records are stored correctly.
+17. Original uploaded Excel is stored securely.
+18. Audit logging works.
+19. No payroll functionality breaks Stage 1.
+20. Application builds and runs successfully.
+
+After implementation:
+
+- Run all relevant tests.
+- Fix all errors.
+- Test the complete workflow using a realistic sample Excel file.
+- Verify the database records.
+- Verify that salary totals in the imported payroll match the Excel file.
+
+At the end, provide a concise report containing:
+
+- Files/components created or modified
+- Database tables created/modified
+- Excel parsing library used
+- Storage method used for original Excel files
+- Payroll import workflow
+- Validation rules implemented
+- Tests performed
+- Any known limitations
+- Confirmation that Stage 2 is complete
+
+IMPORTANT:
+Do NOT proceed to Stage 3.
+Stop after Stage 2 is fully implemented and tested.

@@ -77,6 +77,17 @@ The admin account was seeded directly via SQL. To reset a password, use a script
 
 ## Product
 
+**Stage 2 (complete):**
+- Employee Master: full CRUD, search/filter by name/code/designation/branch/status, activate/deactivate (soft delete)
+- Payroll upload wizard (5 steps): upload Excel → select worksheet → map columns → preview & validate → confirm → import
+- Flexible column mapping (suggested from fuzzy match, saved for future uploads)
+- Row-level validation: missing Employee ID, unknown employee, duplicate codes, invalid numerics, inactive employee warnings, missing mobile/email warnings
+- Unmapped Excel columns preserved as `additional_components` JSONB (for Stage 3 payslip generation)
+- Payroll History: list with status badges, totals in Indian Rupee format
+- Payroll Run detail: all records with employee info and additional component tooltips
+- Dashboard stats now reflect real employee and payroll run counts
+- Audit logging for all Stage 2 operations (employee created/updated/activated/deactivated, payroll imported/cancelled)
+
 **Stage 1 (complete):**
 - Admin login/logout with secure session cookies
 - Company settings (name + logo upload/remove)
@@ -95,6 +106,20 @@ The admin account was seeded directly via SQL. To reset a password, use a script
 ## User Preferences
 
 _Populate as you build — explicit user instructions worth remembering across sessions._
+
+## Stage 2 Key Files
+
+| Purpose | File |
+|---|---|
+| Employee routes | `artifacts/api-server/src/routes/employees.ts` |
+| Payroll upload workflow | `artifacts/api-server/src/routes/payroll.ts` |
+| Payroll history/detail/cancel | `artifacts/api-server/src/routes/payrollRuns.ts` |
+| Excel parsing utilities | `artifacts/api-server/src/lib/excelParser.ts` |
+| Employees UI | `artifacts/payroll-portal/src/pages/employees/index.tsx` |
+| Payroll upload wizard | `artifacts/payroll-portal/src/pages/payroll/index.tsx` |
+| Payroll history | `artifacts/payroll-portal/src/pages/payroll/history.tsx` |
+| Payroll run detail | `artifacts/payroll-portal/src/pages/payroll/run-detail.tsx` |
+| INR formatter + date utils | `artifacts/payroll-portal/src/lib/format.ts` |
 
 ## Gotchas
 

@@ -17,8 +17,10 @@ const BASE = window.location.origin;
 Font.register({
   family: 'NotoSans',
   fonts: [
-    { src: `${BASE}/fonts/NotoSans-Regular.ttf`, fontWeight: 'normal' },
-    { src: `${BASE}/fonts/NotoSans-Bold.ttf`,    fontWeight: 'bold' },
+    { src: `${BASE}/fonts/NotoSans-Regular.ttf`, fontWeight: 'normal',  fontStyle: 'normal' },
+    { src: `${BASE}/fonts/NotoSans-Regular.ttf`, fontWeight: 'normal',  fontStyle: 'italic' },
+    { src: `${BASE}/fonts/NotoSans-Bold.ttf`,    fontWeight: 'bold',    fontStyle: 'normal' },
+    { src: `${BASE}/fonts/NotoSans-Bold.ttf`,    fontWeight: 'bold',    fontStyle: 'italic' },
   ],
 });
 

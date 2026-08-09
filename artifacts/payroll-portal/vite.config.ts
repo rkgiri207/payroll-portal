@@ -47,6 +47,10 @@ export default defineConfig({
         ]
       : []),
   ],
+  define: {
+    // jszip and some pdf libs reference Node globals in their source
+    global: 'globalThis',
+  },
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, 'src'),
@@ -56,8 +60,13 @@ export default defineConfig({
         '..',
         'attached_assets',
       ),
+      // polyfill Node's Buffer for jszip in the browser
+      buffer: 'buffer/',
     },
     dedupe: ['react', 'react-dom'],
+  },
+  optimizeDeps: {
+    include: ['buffer'],
   },
   root: path.resolve(import.meta.dirname),
   build: {

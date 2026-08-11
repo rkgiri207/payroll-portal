@@ -6,3 +6,5 @@ export * from "./payrollRuns";
 export * from "./payrollRecords";
 export * from "./payrollColumnMappings";
 export * from "./payslipGenerations";
+export * from "./payslipShares";
+export * from "./payrollWhatsAppLogs";

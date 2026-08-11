@@ -15,14 +15,16 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/hooks/use-toast"
 
-const nameSchema = z.object({
+const identitySchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
+  address: z.string().max(1000, "Address is too long").optional(),
 })
-type NameFormValues = z.infer<typeof nameSchema>
+type IdentityFormValues = z.infer<typeof identitySchema>
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -53,14 +55,14 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-8">
-        <CompanyNameSection defaultName={settings?.companyName || ""} />
+        <CompanyIdentitySection defaultName={settings?.companyName || ""} defaultAddress={settings?.address || ""} />
         <CompanyLogoSection logoPath={settings?.logoPath} />
       </div>
     </div>
   )
 }
 
-function CompanyNameSection({ defaultName }: { defaultName: string }) {
+function CompanyIdentitySection({ defaultName, defaultAddress }: { defaultName: string; defaultAddress: string }) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   
@@ -69,34 +71,35 @@ function CompanyNameSection({ defaultName }: { defaultName: string }) {
       onSuccess: () => {
         toast({
           title: "Settings saved",
-          description: "Company name has been updated successfully.",
+          description: "Organization details have been updated successfully.",
         })
         queryClient.invalidateQueries({ queryKey: getGetCompanySettingsQueryKey() })
       },
       onError: () => {
         toast({
           title: "Error",
-          description: "Failed to update company name.",
+          description: "Failed to update organization details.",
           variant: "destructive"
         })
       }
     }
   })
 
-  const form = useForm<NameFormValues>({
-    resolver: zodResolver(nameSchema),
+  const form = useForm<IdentityFormValues>({
+    resolver: zodResolver(identitySchema),
     defaultValues: {
       companyName: defaultName,
+      address: defaultAddress,
     },
   })
 
   // Reset form when defaultName changes (initial load)
   React.useEffect(() => {
-    form.reset({ companyName: defaultName })
-  }, [defaultName, form])
+    form.reset({ companyName: defaultName, address: defaultAddress })
+  }, [defaultName, defaultAddress, form])
 
-  const onSubmit = (data: NameFormValues) => {
-    updateSettings.mutate({ data })
+  const onSubmit = (data: IdentityFormValues) => {
+    updateSettings.mutate({ data: { ...data, address: data.address?.trim() || null } })
   }
 
   return (
@@ -120,6 +123,19 @@ function CompanyNameSection({ defaultName }: { defaultName: string }) {
               <p className="text-sm font-medium text-destructive">
                 {form.formState.errors.companyName.message}
               </p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="address">Address</Label>
+            <Textarea
+              id="address"
+              rows={3}
+              placeholder="Organization postal address"
+              {...form.register("address")}
+              data-testid="input-company-address"
+            />
+            {form.formState.errors.address && (
+              <p className="text-sm font-medium text-destructive">{form.formState.errors.address.message}</p>
             )}
           </div>
           <Button 

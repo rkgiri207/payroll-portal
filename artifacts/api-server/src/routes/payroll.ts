@@ -17,7 +17,7 @@ import { payrollRunsTable, payrollRecordsTable, payrollColumnMappingsTable } fro
 import { eq, and } from 'drizzle-orm';
 import { requireAuth } from '../middlewares/requireAuth';
 import { createAuditLog } from '../lib/audit';
-import { ObjectStorageService } from '../lib/objectStorage';
+import { ObjectStorageService, STORAGE_BUCKETS } from '../lib/objectStorage';
 import { parseExcelBuffer, normalizeSalaryValue, addDecimals } from '../lib/excelParser';
 import { validateIndianMobile } from '../lib/mobileValidator';
 
@@ -52,8 +52,10 @@ router.post('/payroll/request-upload-url', requireAuth, async (req: Request, res
   }
 
   try {
-    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-    const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
+    const { uploadURL, objectPath } = await objectStorageService.getObjectEntityUploadURL(
+      STORAGE_BUCKETS.payrollFiles,
+      name,
+    );
     res.json({ uploadURL, objectPath, metadata: { name, size, contentType } });
   } catch (err) {
     req.log.error({ err }, 'Error generating payroll upload URL');
@@ -73,7 +75,7 @@ router.post('/payroll/parse-excel', requireAuth, async (req: Request, res: Respo
   }
 
   try {
-    const file = await objectStorageService.getObjectEntityFile(objectPath);
+    const file = await objectStorageService.getObjectEntityFile(objectPath, STORAGE_BUCKETS.payrollFiles);
     const [buffer] = await file.download();
 
     const parsed = parseExcelBuffer(buffer, sheetName);
@@ -111,7 +113,7 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
 
   try {
     // Download + parse Excel
-    const file = await objectStorageService.getObjectEntityFile(objectPath);
+    const file = await objectStorageService.getObjectEntityFile(objectPath, STORAGE_BUCKETS.payrollFiles);
     const [buffer] = await file.download();
     const parsed = parseExcelBuffer(buffer, sheetName);
 
@@ -240,14 +242,16 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
       const esiEmployeeRaw = columnMapping.esiEmployee ? row[columnMapping.esiEmployee] : undefined;
       const esiEmployerRaw = columnMapping.esiEmployer ? row[columnMapping.esiEmployer] : undefined;
       const ptRaw          = columnMapping.pt           ? row[columnMapping.pt]           : undefined;
+      const lopRaw         = columnMapping.lop          ? row[columnMapping.lop]          : undefined;
       const otherDedRaw    = columnMapping.otherDeductions ? row[columnMapping.otherDeductions] : undefined;
       const pfEmployee  = normalizeSalaryValue(pfEmployeeRaw);
       const pfEmployer  = normalizeSalaryValue(pfEmployerRaw);
       const esiEmployee = normalizeSalaryValue(esiEmployeeRaw);
       const esiEmployer = normalizeSalaryValue(esiEmployerRaw);
       const pt          = normalizeSalaryValue(ptRaw);
+      const lop         = normalizeSalaryValue(lopRaw);
       const otherDed    = normalizeSalaryValue(otherDedRaw);
-      const totalDed = [pfEmployee, pfEmployer, esiEmployee, esiEmployer, pt, otherDed]
+      const totalDed = [pfEmployee, pfEmployer, esiEmployee, esiEmployer, pt, lop, otherDed]
         .reduce<string>((acc, v) => addDecimals(acc, v), '0.00');
 
       // Running totals (valid values only)
@@ -324,7 +328,7 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
 
   try {
     // Parse Excel again (authoritative server-side parse)
-    const file = await objectStorageService.getObjectEntityFile(objectPath);
+    const file = await objectStorageService.getObjectEntityFile(objectPath, STORAGE_BUCKETS.payrollFiles);
     const [buffer] = await file.download();
     const parsed = parseExcelBuffer(buffer, sheetName);
 
@@ -350,6 +354,7 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
       esiEmployee: string | null;
       esiEmployer: string | null;
       pt: string | null;
+      lop: string | null;
       otherDeductions: string | null;
       netSalary: string | null;
       additionalComponents: Record<string, string>;
@@ -418,6 +423,7 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
       const esiEmployee     = get(columnMapping.esiEmployee);
       const esiEmployer     = get(columnMapping.esiEmployer);
       const pt              = get(columnMapping.pt);
+      const lop             = get(columnMapping.lop);
       const otherDeductions = get(columnMapping.otherDeductions);
       const netSalary      = get(columnMapping.netSalary);
 
@@ -435,7 +441,7 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
       // Running totals
       if (grossSalary)  totalGross = addDecimals(totalGross, grossSalary);
       if (netSalary)    totalNet   = addDecimals(totalNet, netSalary);
-      const rowDed = [pfEmployee, pfEmployer, esiEmployee, esiEmployer, pt, otherDeductions]
+      const rowDed = [pfEmployee, pfEmployer, esiEmployee, esiEmployer, pt, lop, otherDeductions]
         .reduce<string>((acc, v) => addDecimals(acc, v), '0.00');
       if (rowDed !== '0.00') totalDeductions = addDecimals(totalDeductions, rowDed);
 
@@ -457,6 +463,7 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
         esiEmployee,
         esiEmployer,
         pt,
+        lop,
         otherDeductions,
         netSalary,
         additionalComponents,

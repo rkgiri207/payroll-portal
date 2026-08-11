@@ -1,5 +1,8 @@
 import { useParams, Link } from 'wouter';
-import { useGetPayrollRun, getGetPayrollRunQueryKey, useCancelPayrollRun } from '@workspace/api-client-react';
+import {
+  useGetPayrollRun, getGetPayrollRunQueryKey, useCancelPayrollRun, useDeletePayrollRecord,
+  getListPayrollRunsQueryKey, getGetDashboardStatsQueryKey,
+} from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { formatDate, formatINR, monthName } from '@/lib/format';
 import { Button } from '@/components/ui/button';
@@ -18,7 +21,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ArrowLeft, FileDown, XCircle } from 'lucide-react';
+import { ArrowLeft, FileDown, Loader2, Trash2, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -36,6 +39,21 @@ export default function PayrollRunDetailPage() {
   });
 
   const cancelMut = useCancelPayrollRun();
+  const deleteRecordMut = useDeletePayrollRecord();
+
+  const handleDeleteRecord = (recordId: number) => {
+    deleteRecordMut.mutate({ runId: numericId, recordId }, {
+      onSuccess: () => {
+        toast({ title: 'Payslip deleted', description: 'The employee payslip record was removed.' });
+        queryClient.invalidateQueries({ queryKey: getGetPayrollRunQueryKey(numericId) });
+        queryClient.invalidateQueries({ queryKey: getListPayrollRunsQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getGetDashboardStatsQueryKey() });
+      },
+      onError: (err: any) => {
+        toast({ title: 'Delete failed', description: err?.message || 'Could not delete the payslip.', variant: 'destructive' });
+      },
+    });
+  };
 
   const handleCancelRun = () => {
     if (!id) return;
@@ -200,15 +218,17 @@ export default function PayrollRunDetailPage() {
               <TableHead className="text-right whitespace-nowrap">ESI Emp</TableHead>
               <TableHead className="text-right whitespace-nowrap">ESI Emplr</TableHead>
               <TableHead className="text-right whitespace-nowrap">PT</TableHead>
+              <TableHead className="text-right whitespace-nowrap">LOP</TableHead>
               <TableHead className="text-right whitespace-nowrap">Other Ded</TableHead>
               <TableHead className="text-right font-semibold whitespace-nowrap">Net Salary</TableHead>
               <TableHead className="text-center whitespace-nowrap">Additional</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {run.records?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={18} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={20} className="h-32 text-center text-muted-foreground">
                   No records found in this run.
                 </TableCell>
               </TableRow>
@@ -232,6 +252,7 @@ export default function PayrollRunDetailPage() {
                     <TableCell className="text-right">{formatINR((record as any).esiEmployee)}</TableCell>
                     <TableCell className="text-right">{formatINR((record as any).esiEmployer)}</TableCell>
                     <TableCell className="text-right">{formatINR((record as any).pt)}</TableCell>
+                    <TableCell className="text-right">{formatINR((record as any).lop)}</TableCell>
                     <TableCell className="text-right">{formatINR(record.otherDeductions)}</TableCell>
                     <TableCell className="text-right font-bold">{formatINR(record.netSalary)}</TableCell>
                     <TableCell className="text-center">
@@ -253,6 +274,34 @@ export default function PayrollRunDetailPage() {
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" title="Delete payslip" data-testid={`btn-delete-record-${record.id}`}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete this payslip?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This permanently removes the payroll record for {record.employeeCode} — {record.employeeName}, including its generation status and secure share link. This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel disabled={deleteRecordMut.isPending}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteRecord(record.id)}
+                              disabled={deleteRecordMut.isPending}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              data-testid={`btn-confirm-delete-record-${record.id}`}
+                            >
+                              {deleteRecordMut.isPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Deleting...</> : 'Delete Payslip'}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </TableCell>
                   </TableRow>
                 );

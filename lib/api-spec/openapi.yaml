@@ -645,6 +645,79 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiError"
 
+  /payroll-runs/{runId}/records/{recordId}:
+    delete:
+      operationId: deletePayrollRecord
+      tags: [payroll-runs]
+      summary: Delete one payslip record from a payroll run
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: number
+        - name: recordId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /payroll-records/{id}/whatsapp/send-test:
+    post:
+      operationId: sendTestPayrollWhatsApp
+      tags: [payroll-runs]
+      summary: Send one payslip using the isolated Payroll WhatsApp sender
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: WhatsApp request accepted by Meta
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayrollWhatsAppSendResult"
+        "400":
+          description: Invalid payroll record or mobile number
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "409":
+          description: Duplicate send prevented
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "502":
+          description: Meta API failure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Payroll WhatsApp template is not ready for secure-link delivery
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
 # ─────────────────────────────────────────────
 # Schemas
 # ─────────────────────────────────────────────
@@ -964,6 +1037,8 @@ components:
           type: string
         pt:
           type: string
+        lop:
+          type: string
         otherDeductions:
           type: string
         netSalary:
@@ -1204,6 +1279,8 @@ components:
           type: ["string", "null"]
         pt:
           type: ["string", "null"]
+        lop:
+          type: ["string", "null"]
         otherDeductions:
           type: ["string", "null"]
         netSalary:
@@ -1273,3 +1350,19 @@ components:
           type: number
         limit:
           type: number
+
+    PayrollWhatsAppSendResult:
+      type: object
+      required: [status, recipient, template, metaMessageId, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [SENT]
+        recipient:
+          type: string
+        template:
+          type: string
+        metaMessageId:
+          type: string
+        timestamp:
+          type: string

@@ -56,21 +56,20 @@ export function LayoutShell({ children }: { children: ReactNode }) {
   const logoUrl = settings?.logoPath ? `/api/storage${settings.logoPath}` : null
 
   return (
-    <div className="flex min-h-[100dvh] w-full bg-background" data-testid="layout-shell">
-      {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-10 hidden w-64 flex-col border-r bg-sidebar sm:flex">
-        <div className="flex h-16 shrink-0 items-center px-6 border-b">
-          <Link href="/" className="flex items-center gap-3 font-semibold text-lg hover:opacity-90 transition-opacity" data-testid="link-home">
+    <div className="min-h-[100dvh] w-full bg-background p-0 sm:p-4" data-testid="layout-shell">
+      <div className="mx-auto min-h-[100dvh] max-w-[1600px] overflow-hidden border-border bg-card sm:min-h-[calc(100dvh-2rem)] sm:rounded-lg sm:border sm:shadow-[0_18px_50px_rgba(31,27,61,0.10)]">
+        <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur-md">
+          <div className="flex min-h-16 items-center gap-4 px-4 sm:px-6">
+          <Link href="/" className="flex min-w-0 shrink-0 items-center gap-3 font-semibold hover:opacity-80 transition-opacity" data-testid="link-home">
             {logoUrl ? (
-              <img src={logoUrl} alt={companyName} className="h-8 w-8 object-contain" />
+              <img src={logoUrl} alt={companyName} className="h-9 w-9 rounded-md object-contain" />
             ) : (
-              <Building2 className="h-6 w-6 text-primary" />
+              <span className="grid h-9 w-9 place-items-center rounded-md bg-primary text-primary-foreground"><Building2 className="h-5 w-5" /></span>
             )}
-            <span className="truncate">{companyName}</span>
+            <span className="hidden max-w-48 truncate text-base sm:block">{companyName}</span>
           </Link>
-        </div>
-        
-        <nav className="flex-1 overflow-auto py-4 px-3 space-y-1">
+
+          <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 lg:flex">
           {NAV_ITEMS.map((item) => {
             const isActive = location === item.href || (item.href === '/payroll' && location.startsWith('/payroll/runs/'));
             return (
@@ -79,10 +78,10 @@ export function LayoutShell({ children }: { children: ReactNode }) {
                 href={item.href}
                 data-testid={`nav-item-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200",
                   isActive 
                     ? "bg-primary text-primary-foreground" 
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
               >
                 <item.icon className="h-4 w-4" />
@@ -90,31 +89,35 @@ export function LayoutShell({ children }: { children: ReactNode }) {
               </Link>
             )
           })}
-        </nav>
+          </nav>
 
-        <div className="border-t p-4 space-y-4">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <Link
             href="/settings"
             data-testid="nav-item-settings"
+            title="Settings"
             className={cn(
-              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              "grid h-9 w-9 place-items-center rounded-md border transition-all duration-200",
               location === "/settings"
-                ? "bg-primary text-primary-foreground"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             )}
           >
             <Settings className="h-4 w-4" />
-            Settings
           </Link>
-          
-          <div className="flex items-center justify-between px-3">
-            <div className="flex flex-col truncate">
-              <span className="text-sm font-medium truncate">{user.name}</span>
-              <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+            <div className="hidden min-w-0 items-center gap-2 pl-2 md:flex">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-secondary text-xs font-bold text-secondary-foreground">
+                {user.name.split(/\s+/).map(part => part[0]).join('').slice(0, 2).toUpperCase()}
+              </span>
+              <div className="flex max-w-40 flex-col truncate leading-tight">
+                <span className="truncate text-sm font-medium">{user.name}</span>
+                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+              </div>
             </div>
             <Button 
               variant="ghost" 
-              size="icon" 
+              size="icon"
+              className="h-9 w-9 border border-border"
               onClick={handleLogout}
               disabled={logout.isPending}
               data-testid="button-logout"
@@ -123,27 +126,29 @@ export function LayoutShell({ children }: { children: ReactNode }) {
               <LogOut className="h-4 w-4 text-muted-foreground" />
             </Button>
           </div>
-        </div>
-      </aside>
+          </div>
 
-      {/* Main content */}
-      <main className="flex-1 sm:pl-64">
-        {/* Mobile Header */}
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4 sm:hidden">
-          <Link href="/" className="flex items-center gap-2 font-semibold">
-            {logoUrl ? (
-              <img src={logoUrl} alt={companyName} className="h-6 w-6 object-contain" />
-            ) : (
-              <Building2 className="h-5 w-5" />
-            )}
-            <span className="truncate">{companyName}</span>
-          </Link>
+          <nav className="flex gap-1 overflow-x-auto border-t px-3 py-2 lg:hidden">
+            {NAV_ITEMS.map((item) => {
+              const isActive = location === item.href || (item.href === '/payroll' && location.startsWith('/payroll/runs/'));
+              return (
+                <Link key={item.href} href={item.href} className={cn(
+                  "flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-all duration-200",
+                  isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
+                )}>
+                  <item.icon className="h-4 w-4" />{item.label}
+                </Link>
+              );
+            })}
+          </nav>
         </header>
-        
-        <div className="p-6 md:p-8 max-w-7xl mx-auto w-full">
+
+        <main>
+        <div className="mx-auto w-full max-w-7xl p-4 sm:p-6 lg:p-8">
           {children}
         </div>
-      </main>
+        </main>
+      </div>
     </div>
   )
 }

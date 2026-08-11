@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1786375748187,
+      "tag": "0000_dev_baseline",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786378490746,
+      "tag": "0001_persist_payslip_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786450000000,
+      "tag": "0002_secure_payslip_shares",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786455000000,
+      "tag": "0003_add_lop_deduction",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786460000000,
+      "tag": "0004_payroll_whatsapp_logs",
+      "breakpoints": true
+    }
+  ]
+}

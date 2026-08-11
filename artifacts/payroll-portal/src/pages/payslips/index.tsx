@@ -16,8 +16,9 @@ import {
   useListPayrollRuns,
   useGetPayrollRun,
   useGetCompanySettings,
+  sendTestPayrollWhatsApp,
 } from '@workspace/api-client-react';
-import { formatINR, monthName } from '@/lib/format';
+import { formatDateTime, formatINR, monthName } from '@/lib/format';
 import {
   PayslipDocument,
   type PayslipRecord,
@@ -28,7 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -39,6 +40,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import {
   FileDown, RefreshCw, Eye, Download, Archive, Loader2, CheckCircle2, XCircle, AlertTriangle,
+  Share2, Copy, Check, MessageCircle,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -58,6 +60,21 @@ interface BulkProgress {
   done: boolean;
 }
 
+interface ShareLink {
+  url: string;
+  expiresAt: string;
+}
+
+interface WhatsAppSendResult {
+  status: 'SENT' | 'FAILED';
+  recipient?: string;
+  template?: string;
+  metaMessageId?: string;
+  timestamp?: string;
+  error?: string;
+  code?: string;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const API_BASE = '/api';
@@ -67,7 +84,20 @@ async function fetchLogoDataUrl(): Promise<string | null> {
     const res = await fetch(`${API_BASE}/company-settings/logo`, { credentials: 'include' });
     if (!res.ok) return null;
     const blob = await res.blob();
-    return URL.createObjectURL(blob);
+    const bitmap = await createImageBitmap(blob);
+    const maxDimension = 512;
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext('2d');
+    if (!context) {
+      bitmap.close();
+      return null;
+    }
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    return canvas.toDataURL('image/png');
   } catch {
     return null;
   }
@@ -89,12 +119,16 @@ async function fetchPayslipStatuses(runId: number): Promise<Map<number, StatusEn
 }
 
 async function savePayslipStatuses(runId: number, updates: Array<{ payrollRecordId: number; status: GenerationStatus; errorMessage?: string | null }>) {
-  await fetch(`${API_BASE}/payroll-runs/${runId}/payslip-statuses`, {
+  const res = await fetch(`${API_BASE}/payroll-runs/${runId}/payslip-statuses`, {
     method: 'PATCH',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ updates }),
   });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error ?? 'Failed to save payslip generation status');
+  }
 }
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -136,6 +170,12 @@ export default function PayslipsPage() {
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [generatingId, setGeneratingId] = useState<number | null>(null);
+  const [sharingId, setSharingId] = useState<number | null>(null);
+  const [shareLinks, setShareLinks] = useState<Map<number, ShareLink>>(new Map());
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [whatsAppRecord, setWhatsAppRecord] = useState<PayslipRecord | null>(null);
+  const [whatsAppSending, setWhatsAppSending] = useState(false);
+  const [whatsAppResult, setWhatsAppResult] = useState<WhatsAppSendResult | null>(null);
   const abortRef = useRef(false);
 
   // ── Queries ─────────────────────────────────────────────────────────────────
@@ -219,6 +259,61 @@ export default function PayslipsPage() {
     }
   };
 
+  const handleShare = async (record: PayslipRecord) => {
+    const current = shareLinks.get(record.id);
+    const forceNew = !!current;
+    if (forceNew && !window.confirm('Create a new link? The previous link will stop working.')) return;
+    setSharingId(record.id);
+    try {
+      const response = await fetch(`${API_BASE}/payroll-records/${record.id}/share-link`, {
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ forceNew }),
+      });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(body?.error ?? 'Failed to create share link');
+      setShareLinks(previous => new Map(previous).set(record.id, body));
+      await navigator.clipboard.writeText(body.url);
+      setCopiedId(record.id);
+      setTimeout(() => setCopiedId(id => id === record.id ? null : id), 2000);
+      toast({ title: body.reused ? 'Share link copied' : 'Secure share link created', description: `Expires ${new Date(body.expiresAt).toLocaleString()}` });
+    } catch (error) {
+      toast({ title: 'Share link failed', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setSharingId(null);
+    }
+  };
+
+  const copyShare = async (recordId: number) => {
+    const link = shareLinks.get(recordId);
+    if (!link) return;
+    await navigator.clipboard.writeText(link.url);
+    setCopiedId(recordId);
+    setTimeout(() => setCopiedId(id => id === recordId ? null : id), 2000);
+  };
+
+  const openWhatsAppConfirmation = (record: PayslipRecord) => {
+    setWhatsAppRecord(record);
+    setWhatsAppResult(null);
+  };
+
+  const handleWhatsAppSend = async () => {
+    if (!whatsAppRecord) return;
+    setWhatsAppSending(true);
+    setWhatsAppResult(null);
+    try {
+      setWhatsAppResult(await sendTestPayrollWhatsApp(whatsAppRecord.id));
+    } catch (error) {
+      const body = (error as any)?.data;
+      setWhatsAppResult({
+        status: 'FAILED',
+        error: body?.error ?? (error instanceof Error ? error.message : 'WhatsApp send failed'),
+        code: body?.code,
+      });
+    } finally {
+      setWhatsAppSending(false);
+    }
+  };
+
   // ── Generate all + ZIP ─────────────────────────────────────────────────────
   const handleGenerateAll = async (downloadZip = false) => {
     if (!run || !selectedRunId || records.length === 0) return;
@@ -280,7 +375,8 @@ export default function PayslipsPage() {
   const isBusy = isGeneratingAll || isDownloadingAll;
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  const activeRuns = runsData?.runs?.filter(r => r.status !== 'CANCELLED') ?? [];
+  const activeRuns = [...(runsData?.runs?.filter(r => r.status !== 'CANCELLED') ?? [])]
+    .sort((a, b) => new Date(b.uploadTimestamp ?? b.createdAt).getTime() - new Date(a.uploadTimestamp ?? a.createdAt).getTime());
 
   return (
     <div className="space-y-6">
@@ -312,6 +408,7 @@ export default function PayslipsPage() {
             <SelectContent>
               {activeRuns.map(r => (
                 <SelectItem key={r.id} value={r.id.toString()}>
+                  <span className="mr-2 text-xs text-muted-foreground">{formatDateTime(r.uploadTimestamp ?? r.createdAt)}</span>
                   {monthName(r.payrollMonth)} {r.payrollYear} — {r.employeeCount} employees
                 </SelectItem>
               ))}
@@ -441,7 +538,31 @@ export default function PayslipsPage() {
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
+                              <div className="flex flex-col items-end gap-1">
                               <div className="flex items-center justify-end gap-1">
+                                {shareLinks.has(record.id) ? (
+                                  <Button size="sm" variant="ghost" onClick={() => copyShare(record.id)} title={`Copy link (expires ${new Date(shareLinks.get(record.id)!.expiresAt).toLocaleString()})`}>
+                                    {copiedId === record.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                  </Button>
+                                ) : null}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleShare(record)}
+                                  disabled={isBusy || sharingId === record.id}
+                                  title={shareLinks.has(record.id) ? 'Create new share link' : 'Create share link'}
+                                >
+                                  {sharingId === record.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => openWhatsAppConfirmation(record)}
+                                  disabled={isBusy || whatsAppSending}
+                                  title="Send test WhatsApp"
+                                >
+                                  <MessageCircle className="h-4 w-4" />
+                                </Button>
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -473,6 +594,12 @@ export default function PayslipsPage() {
                                     <RefreshCw className="h-4 w-4" />
                                   </Button>
                                 )}
+                              </div>
+                              {shareLinks.has(record.id) ? (
+                                <span className="text-xs text-muted-foreground">
+                                  Valid until {new Date(shareLinks.get(record.id)!.expiresAt).toLocaleDateString('en-GB')}
+                                </span>
+                              ) : null}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -520,6 +647,48 @@ export default function PayslipsPage() {
               </PDFViewer>
             ) : null}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!whatsAppRecord} onOpenChange={open => { if (!open && !whatsAppSending) setWhatsAppRecord(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Test WhatsApp</DialogTitle>
+            <DialogDescription>Confirm this single-recipient payroll message before contacting Meta.</DialogDescription>
+          </DialogHeader>
+          {whatsAppRecord && run && (
+            <div className="grid gap-3 text-sm">
+              <div><span className="text-muted-foreground">Employee:</span> <span className="font-medium">{whatsAppRecord.employeeName} ({whatsAppRecord.employeeCode})</span></div>
+              <div><span className="text-muted-foreground">Period:</span> <span className="font-medium">{monthName(run.payrollMonth)} {run.payrollYear}</span></div>
+              <div><span className="text-muted-foreground">Recipient:</span> <span className="font-mono">{whatsAppRecord.mobileNumber || 'Not available'}</span></div>
+              <div><span className="text-muted-foreground">Template:</span> <span className="font-mono">payslip</span></div>
+              <div><span className="text-muted-foreground">Secure link:</span> <span>Stage 4A link, valid for 7 days</span></div>
+            </div>
+          )}
+          {whatsAppResult?.status === 'SENT' && (
+            <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-900">
+              <p className="font-medium">WhatsApp sent</p>
+              <p>Recipient: {whatsAppResult.recipient}</p>
+              <p>Template: {whatsAppResult.template}</p>
+              <p className="break-all">Meta message ID: {whatsAppResult.metaMessageId}</p>
+              <p>Timestamp: {whatsAppResult.timestamp ? new Date(whatsAppResult.timestamp).toLocaleString() : ''}</p>
+            </div>
+          )}
+          {whatsAppResult?.status === 'FAILED' && (
+            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+              <p className="font-medium">Failed</p>
+              <p>{whatsAppResult.error}</p>
+              {whatsAppResult.code ? <p>Code: {whatsAppResult.code}</p> : null}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWhatsAppRecord(null)} disabled={whatsAppSending}>Close</Button>
+            {whatsAppResult?.status !== 'SENT' && (
+              <Button onClick={handleWhatsAppSend} disabled={whatsAppSending || !whatsAppRecord?.mobileNumber}>
+                {whatsAppSending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</> : <><MessageCircle className="mr-2 h-4 w-4" />Confirm Send</>}
+              </Button>
+            )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

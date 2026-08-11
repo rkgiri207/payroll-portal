@@ -1,0 +1,1 @@
+ALTER TABLE "payslip_generations" ADD CONSTRAINT "payslip_generations_payroll_record_id_unique" UNIQUE("payroll_record_id");

@@ -23,6 +23,7 @@ export interface ColumnMapping {
   esiEmployee?: string;
   esiEmployer?: string;
   pt?: string;
+  lop?: string;
   otherDeductions?: string;
   netSalary?: string;
 }

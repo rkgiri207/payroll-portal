@@ -402,6 +402,7 @@ export const ValidatePayrollBody = zod.object({
   "esiEmployee": zod.string().optional(),
   "esiEmployer": zod.string().optional(),
   "pt": zod.string().optional(),
+  "lop": zod.string().optional(),
   "otherDeductions": zod.string().optional(),
   "netSalary": zod.string().optional()
 }),
@@ -475,6 +476,7 @@ export const ImportPayrollBody = zod.object({
   "esiEmployee": zod.string().optional(),
   "esiEmployer": zod.string().optional(),
   "pt": zod.string().optional(),
+  "lop": zod.string().optional(),
   "otherDeductions": zod.string().optional(),
   "netSalary": zod.string().optional()
 }),
@@ -514,6 +516,7 @@ export const GetColumnMappingResponse = zod.object({
   "esiEmployee": zod.string().optional(),
   "esiEmployer": zod.string().optional(),
   "pt": zod.string().optional(),
+  "lop": zod.string().optional(),
   "otherDeductions": zod.string().optional(),
   "netSalary": zod.string().optional()
 }),zod.null()])
@@ -542,6 +545,7 @@ export const SaveColumnMappingBody = zod.object({
   "esiEmployee": zod.string().optional(),
   "esiEmployer": zod.string().optional(),
   "pt": zod.string().optional(),
+  "lop": zod.string().optional(),
   "otherDeductions": zod.string().optional(),
   "netSalary": zod.string().optional()
 })
@@ -566,6 +570,7 @@ export const SaveColumnMappingResponse = zod.object({
   "esiEmployee": zod.string().optional(),
   "esiEmployer": zod.string().optional(),
   "pt": zod.string().optional(),
+  "lop": zod.string().optional(),
   "otherDeductions": zod.string().optional(),
   "netSalary": zod.string().optional()
 }),zod.null()])
@@ -656,6 +661,7 @@ export const GetPayrollRunResponse = zod.object({
   "esiEmployee": zod.string().nullish(),
   "esiEmployer": zod.string().nullish(),
   "pt": zod.string().nullish(),
+  "lop": zod.string().nullish(),
   "otherDeductions": zod.string().nullish(),
   "netSalary": zod.string().nullish(),
   "additionalComponents": zod.record(zod.string(), zod.string()).nullish()
@@ -723,6 +729,35 @@ export const CancelPayrollRunResponse = zod.object({
   "status": zod.enum(['DRAFT', 'VALIDATED', 'IMPORTED', 'CANCELLED']),
   "createdAt": zod.string(),
   "updatedAt": zod.string()
+})
+
+
+/**
+ * @summary Delete one payslip record from a payroll run
+ */
+export const DeletePayrollRecordParams = zod.object({
+  "runId": zod.coerce.number(),
+  "recordId": zod.coerce.number()
+})
+
+export const DeletePayrollRecordResponse = zod.object({
+  "success": zod.boolean()
+})
+
+
+/**
+ * @summary Send one payslip using the isolated Payroll WhatsApp sender
+ */
+export const SendTestPayrollWhatsAppParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SendTestPayrollWhatsAppResponse = zod.object({
+  "status": zod.enum(['SENT']),
+  "recipient": zod.string(),
+  "template": zod.string(),
+  "metaMessageId": zod.string(),
+  "timestamp": zod.string()
 })
 
 

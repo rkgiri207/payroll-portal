@@ -42,6 +42,8 @@ export interface PayrollRecord {
   /** @nullable */
   pt?: string | null;
   /** @nullable */
+  lop?: string | null;
+  /** @nullable */
   otherDeductions?: string | null;
   /** @nullable */
   netSalary?: string | null;

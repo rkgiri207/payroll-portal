@@ -52,6 +52,7 @@ const OPTIONAL_FIELDS = [
   { key: 'esiEmployee', label: 'ESI — Employee Contribution (0.75%)' },
   { key: 'esiEmployer', label: 'ESI — Employer Contribution (3.25%)' },
   { key: 'pt', label: 'PT (Professional Tax)' },
+  { key: 'lop', label: 'LOP' },
   { key: 'otherDeductions', label: 'Other Deductions' },
   { key: 'netSalary', label: 'Net Salary' },
 ];

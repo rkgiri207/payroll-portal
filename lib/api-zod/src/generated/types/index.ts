@@ -46,6 +46,8 @@ export * from './payrollValidationRow';
 export * from './payrollValidationRowMobileStatus';
 export * from './payrollValidationRowStatus';
 export * from './payrollValidationSummary';
+export * from './payrollWhatsAppSendResult';
+export * from './payrollWhatsAppSendResultStatus';
 export * from './payslipStatus';
 export * from './payslipStatusBatchUpdate';
 export * from './payslipStatusStatus';

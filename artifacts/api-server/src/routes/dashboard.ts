@@ -5,6 +5,7 @@ import {
   usersTable,
   employeesTable,
   payrollRunsTable,
+  payslipGenerationsTable,
 } from '@workspace/db/schema';
 import { desc, count, eq } from 'drizzle-orm';
 import { requireAuth } from '../middlewares/requireAuth';
@@ -15,10 +16,15 @@ router.get('/dashboard/stats', requireAuth, async (req: Request, res: Response) 
   const [
     [{ totalEmployees }],
     [{ payrollRuns }],
+    [{ payslipsGenerated }],
     recentLogs,
   ] = await Promise.all([
     db.select({ totalEmployees: count() }).from(employeesTable).where(eq(employeesTable.status, 'ACTIVE')),
     db.select({ payrollRuns: count() }).from(payrollRunsTable).where(eq(payrollRunsTable.status, 'IMPORTED')),
+    db
+      .select({ payslipsGenerated: count() })
+      .from(payslipGenerationsTable)
+      .where(eq(payslipGenerationsTable.status, 'GENERATED')),
     db
       .select({
         id: auditLogsTable.id,
@@ -39,7 +45,7 @@ router.get('/dashboard/stats', requireAuth, async (req: Request, res: Response) 
   res.json({
     totalEmployees: Number(totalEmployees),
     payrollRuns: Number(payrollRuns),
-    payslipsGenerated: 0, // Stage 3
+    payslipsGenerated: Number(payslipsGenerated),
     recentActivity: recentLogs,
   });
 });

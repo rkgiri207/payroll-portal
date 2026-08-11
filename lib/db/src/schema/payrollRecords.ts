@@ -41,6 +41,7 @@ export const payrollRecordsTable = pgTable("payroll_records", {
   esiEmployer: numeric("esi_employer", { precision: 12, scale: 2 }),
   // PT = Professional Tax (formerly TDS)
   pt: numeric("pt", { precision: 12, scale: 2 }),
+  lop: numeric("lop", { precision: 12, scale: 2 }),
   otherDeductions: numeric("other_deductions", { precision: 12, scale: 2 }),
 
   // Net — imported from Excel

@@ -13,7 +13,7 @@ import {
 } from '@workspace/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { requireAuth } from '../middlewares/requireAuth';
-import { ObjectStorageService } from '../lib/objectStorage';
+import { ObjectStorageService, STORAGE_BUCKETS } from '../lib/objectStorage';
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -106,7 +106,7 @@ router.get('/company-settings/logo', requireAuth, async (req: Request, res: Resp
   }
 
   try {
-    const file = await objectStorageService.getObjectEntityFile(settings.logoPath);
+    const file = await objectStorageService.getObjectEntityFile(settings.logoPath, STORAGE_BUCKETS.companyAssets);
     const [buffer] = await file.download();
 
     // Detect basic content type from extension

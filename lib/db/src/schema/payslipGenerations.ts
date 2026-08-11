@@ -6,6 +6,7 @@ export const payslipGenerationsTable = pgTable("payslip_generations", {
   id: serial("id").primaryKey(),
   payrollRecordId: integer("payroll_record_id")
     .notNull()
+    .unique()
     .references(() => payrollRecordsTable.id, { onDelete: "cascade" }),
   payrollRunId: integer("payroll_run_id")
     .notNull()

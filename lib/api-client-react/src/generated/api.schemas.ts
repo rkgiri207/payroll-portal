@@ -216,6 +216,7 @@ export interface ColumnMapping {
   esiEmployee?: string;
   esiEmployer?: string;
   pt?: string;
+  lop?: string;
   otherDeductions?: string;
   netSalary?: string;
 }
@@ -405,6 +406,8 @@ export interface PayrollRecord {
   /** @nullable */
   pt?: string | null;
   /** @nullable */
+  lop?: string | null;
+  /** @nullable */
   otherDeductions?: string | null;
   /** @nullable */
   netSalary?: string | null;
@@ -459,6 +462,21 @@ export interface PayrollRunListResponse {
   total: number;
   page: number;
   limit: number;
+}
+
+export type PayrollWhatsAppSendResultStatus = typeof PayrollWhatsAppSendResultStatus[keyof typeof PayrollWhatsAppSendResultStatus];
+
+
+export const PayrollWhatsAppSendResultStatus = {
+  SENT: 'SENT',
+} as const;
+
+export interface PayrollWhatsAppSendResult {
+  status: PayrollWhatsAppSendResultStatus;
+  recipient: string;
+  template: string;
+  metaMessageId: string;
+  timestamp: string;
 }
 
 export type GetAuditLogsParams = {

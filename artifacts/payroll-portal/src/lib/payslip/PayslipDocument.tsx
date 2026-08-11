@@ -8,21 +8,35 @@
  * Design: A4 portrait, professional typography, two-column salary table.
  * Font: Noto Sans (supports ₹ Indian Rupee Sign U+20B9)
  */
+import React from 'react';
 import { Document, Page, View, Text, Image, StyleSheet, Font } from '@react-pdf/renderer';
 import { amountInWords, formatINRAmount } from '../amountInWords';
 
 // ── Font registration ─────────────────────────────────────────────────────────
 // Noto Sans fonts are served from the app's public directory (with ₹ glyph)
-const BASE = window.location.origin;
-Font.register({
-  family: 'NotoSans',
-  fonts: [
-    { src: `${BASE}/fonts/NotoSans-Regular.ttf`, fontWeight: 'normal',  fontStyle: 'normal' },
-    { src: `${BASE}/fonts/NotoSans-Regular.ttf`, fontWeight: 'normal',  fontStyle: 'italic' },
-    { src: `${BASE}/fonts/NotoSans-Bold.ttf`,    fontWeight: 'bold',    fontStyle: 'normal' },
-    { src: `${BASE}/fonts/NotoSans-Bold.ttf`,    fontWeight: 'bold',    fontStyle: 'italic' },
-  ],
-});
+let fontsRegistered = false;
+
+export function registerPayslipFonts(regularSrc: string, boldSrc: string): void {
+  if (fontsRegistered) return;
+  Font.register({
+    family: 'NotoSans',
+    fonts: [
+      { src: regularSrc, fontWeight: 'normal', fontStyle: 'normal' },
+      { src: regularSrc, fontWeight: 'normal', fontStyle: 'italic' },
+      { src: boldSrc, fontWeight: 'bold', fontStyle: 'normal' },
+      { src: boldSrc, fontWeight: 'bold', fontStyle: 'italic' },
+    ],
+  });
+  fontsRegistered = true;
+}
+
+if ('window' in globalThis) {
+  const origin = (globalThis as typeof globalThis & { location: { origin: string } }).location.origin;
+  registerPayslipFonts(
+    `${origin}/fonts/NotoSans-Regular.ttf`,
+    `${origin}/fonts/NotoSans-Bold.ttf`,
+  );
+}
 
 Font.registerHyphenationCallback(word => [word]); // disable hyphenation
 
@@ -46,6 +60,7 @@ export interface PayslipRecord {
   esiEmployee?: string | null;
   esiEmployer?: string | null;
   pt?: string | null;
+  lop?: string | null;
   otherDeductions?: string | null;
   netSalary?: string | null;
   additionalComponents?: Record<string, string> | null;
@@ -108,6 +123,7 @@ function buildRows(record: PayslipRecord) {
   if (record.esiEmployee != null) deductions.push({ label: 'ESI - Employee (0.75%)',     amount: record.esiEmployee });
   if (record.esiEmployer != null) deductions.push({ label: 'ESI - Employer (3.25%)',     amount: record.esiEmployer });
   if (record.pt != null)          deductions.push({ label: 'PT',                         amount: record.pt });
+  if (record.lop != null)         deductions.push({ label: 'LOP',                        amount: record.lop });
   if (record.otherDeductions !== null && record.otherDeductions !== undefined)
     deductions.push({ label: 'Other Deductions', amount: record.otherDeductions });
 
@@ -325,7 +341,7 @@ export function PayslipDocument({ record, run, company }: Props) {
               {/* Sum all deduction columns */}
               <Text style={styles.tableTotalText}>
                 {formatINRAmount(
-                  [record.pfEmployee, record.pfEmployer, record.esiEmployee, record.esiEmployer, record.pt, record.otherDeductions]
+                  [record.pfEmployee, record.pfEmployer, record.esiEmployee, record.esiEmployer, record.pt, record.lop, record.otherDeductions]
                     .filter((v): v is string => v !== null && v !== undefined)
                     .reduce((sum, v) => sum + parseFloat(v || '0'), 0)
                     .toFixed(2)

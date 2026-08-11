@@ -11,13 +11,16 @@ import { db } from '@workspace/db';
 import {
   payrollRunsTable,
   payrollRecordsTable,
+  payslipSharesTable,
   usersTable,
 } from '@workspace/db/schema';
-import { eq, desc, count, and } from 'drizzle-orm';
+import { eq, desc, count, and, sql } from 'drizzle-orm';
 import { requireAuth } from '../middlewares/requireAuth';
 import { createAuditLog } from '../lib/audit';
+import { ObjectStorageService, STORAGE_BUCKETS } from '../lib/objectStorage';
 
 const router: IRouter = Router();
+const objectStorageService = new ObjectStorageService();
 
 // ─── List payroll runs ────────────────────────────────────────────────────────
 router.get('/payroll-runs', requireAuth, async (req: Request, res: Response) => {
@@ -54,7 +57,7 @@ router.get('/payroll-runs', requireAuth, async (req: Request, res: Response) => 
       .from(payrollRunsTable)
       .leftJoin(usersTable, eq(payrollRunsTable.uploadedBy, usersTable.id))
       .where(where)
-      .orderBy(desc(payrollRunsTable.payrollYear), desc(payrollRunsTable.payrollMonth), desc(payrollRunsTable.createdAt))
+      .orderBy(desc(payrollRunsTable.uploadTimestamp), desc(payrollRunsTable.id))
       .limit(limit)
       .offset(offset),
     db.select({ total: count() }).from(payrollRunsTable).where(where),
@@ -119,6 +122,7 @@ router.get('/payroll-runs/:id', requireAuth, async (req: Request, res: Response)
       esiEmployee: payrollRecordsTable.esiEmployee,
       esiEmployer: payrollRecordsTable.esiEmployer,
       pt: payrollRecordsTable.pt,
+      lop: payrollRecordsTable.lop,
       otherDeductions: payrollRecordsTable.otherDeductions,
       netSalary: payrollRecordsTable.netSalary,
       additionalComponents: payrollRecordsTable.additionalComponents,
@@ -128,6 +132,63 @@ router.get('/payroll-runs/:id', requireAuth, async (req: Request, res: Response)
     .orderBy(payrollRecordsTable.employeeCode);
 
   res.json({ ...run, records });
+});
+
+router.delete('/payroll-runs/:runId/records/:recordId', requireAuth, async (req: Request, res: Response) => {
+  const runId = Number(req.params.runId);
+  const recordId = Number(req.params.recordId);
+  if (!Number.isSafeInteger(runId) || !Number.isSafeInteger(recordId) || runId < 1 || recordId < 1) {
+    res.status(400).json({ error: 'Invalid payroll run or record ID' });
+    return;
+  }
+
+  const [record] = await db.select().from(payrollRecordsTable)
+    .where(and(eq(payrollRecordsTable.id, recordId), eq(payrollRecordsTable.payrollRunId, runId)));
+  if (!record) {
+    res.status(404).json({ error: 'Payslip record not found' });
+    return;
+  }
+
+  const [share] = await db.select({ storagePath: payslipSharesTable.storagePath })
+    .from(payslipSharesTable).where(eq(payslipSharesTable.payrollRecordId, recordId));
+  if (share) {
+    try {
+      await objectStorageService.deleteObject(share.storagePath, STORAGE_BUCKETS.payslips);
+    } catch (error) {
+      if (!(error instanceof Error && error.message.includes('(404)'))) {
+        req.log.error({ err: error, recordId }, 'Failed to remove shared payslip before record deletion');
+        res.status(502).json({ error: 'Could not remove the stored payslip. The record was not deleted.' });
+        return;
+      }
+    }
+  }
+
+  await db.transaction(async tx => {
+    await tx.delete(payrollRecordsTable).where(eq(payrollRecordsTable.id, recordId));
+    const [totals] = await tx.select({
+      employeeCount: count(),
+      totalGross: sql<string>`coalesce(sum(${payrollRecordsTable.grossSalary}), 0)`,
+      totalDeductions: sql<string>`coalesce(sum(
+        coalesce(${payrollRecordsTable.pfEmployee}, 0) + coalesce(${payrollRecordsTable.pfEmployer}, 0) +
+        coalesce(${payrollRecordsTable.esiEmployee}, 0) + coalesce(${payrollRecordsTable.esiEmployer}, 0) +
+        coalesce(${payrollRecordsTable.pt}, 0) + coalesce(${payrollRecordsTable.lop}, 0) +
+        coalesce(${payrollRecordsTable.otherDeductions}, 0)
+      ), 0)`,
+      totalNet: sql<string>`coalesce(sum(${payrollRecordsTable.netSalary}), 0)`,
+    }).from(payrollRecordsTable).where(eq(payrollRecordsTable.payrollRunId, runId));
+    await tx.update(payrollRunsTable).set({
+      employeeCount: Number(totals.employeeCount),
+      totalGross: totals.totalGross,
+      totalDeductions: totals.totalDeductions,
+      totalNet: totals.totalNet,
+    }).where(eq(payrollRunsTable.id, runId));
+  });
+
+  await createAuditLog({
+    action: 'PAYSLIP_RECORD_DELETED', entityType: 'payroll_record', entityId: recordId,
+    performedBy: req.session.userId!, details: `Deleted payslip record for ${record.employeeCode}`,
+  });
+  res.json({ success: true });
 });
 
 // ─── Cancel payroll run ───────────────────────────────────────────────────────

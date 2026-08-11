@@ -22,6 +22,7 @@ export const columnMappingSchema = z.object({
   pf: z.string().optional(),
   esi: z.string().optional(),
   tds: z.string().optional(),
+  lop: z.string().optional(),
   otherDeductions: z.string().optional(),
   netSalary: z.string().optional(),
 });

@@ -48,6 +48,7 @@ import type {
   PayrollUploadUrlRequest,
   PayrollValidationInput,
   PayrollValidationResult,
+  PayrollWhatsAppSendResult,
   PayslipStatusBatchUpdate,
   SavePayslipStatuses200,
   SuccessResponse,
@@ -2170,5 +2171,149 @@ export const useCancelPayrollRun = <TError = ErrorType<ApiError>,
         TContext
       > => {
       return useMutation(getCancelPayrollRunMutationOptions(options));
+    }
+
+export const getDeletePayrollRecordUrl = (runId: number,
+    recordId: number,) => {
+
+
+
+
+  return `/api/payroll-runs/${runId}/records/${recordId}`
+}
+
+/**
+ * @summary Delete one payslip record from a payroll run
+ */
+export const deletePayrollRecord = async (runId: number,
+    recordId: number, options?: Parameters<typeof customFetch>[1]): Promise<SuccessResponse> => {
+
+  return customFetch<SuccessResponse>(getDeletePayrollRecordUrl(runId,recordId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeletePayrollRecordMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePayrollRecord>>, TError,{runId: number;recordId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePayrollRecord>>, TError,{runId: number;recordId: number}, TContext> => {
+
+const mutationKey = ['deletePayrollRecord'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePayrollRecord>>, {runId: number;recordId: number}> = (props) => {
+          const {runId,recordId} = props ?? {};
+
+          return  deletePayrollRecord(runId,recordId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePayrollRecordMutationResult = NonNullable<Awaited<ReturnType<typeof deletePayrollRecord>>>
+
+    export type DeletePayrollRecordMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Delete one payslip record from a payroll run
+ */
+export const useDeletePayrollRecord = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePayrollRecord>>, TError,{runId: number;recordId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deletePayrollRecord>>,
+        TError,
+        {runId: number;recordId: number},
+        TContext
+      > => {
+      return useMutation(getDeletePayrollRecordMutationOptions(options));
+    }
+
+export const getSendTestPayrollWhatsAppUrl = (id: number,) => {
+
+
+
+
+  return `/api/payroll-records/${id}/whatsapp/send-test`
+}
+
+/**
+ * @summary Send one payslip using the isolated Payroll WhatsApp sender
+ */
+export const sendTestPayrollWhatsApp = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<PayrollWhatsAppSendResult> => {
+
+  return customFetch<PayrollWhatsAppSendResult>(getSendTestPayrollWhatsAppUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getSendTestPayrollWhatsAppMutationOptions = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendTestPayrollWhatsApp>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendTestPayrollWhatsApp>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['sendTestPayrollWhatsApp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendTestPayrollWhatsApp>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  sendTestPayrollWhatsApp(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SendTestPayrollWhatsAppMutationResult = NonNullable<Awaited<ReturnType<typeof sendTestPayrollWhatsApp>>>
+
+    export type SendTestPayrollWhatsAppMutationError = ErrorType<ApiError>
+
+    /**
+ * @summary Send one payslip using the isolated Payroll WhatsApp sender
+ */
+export const useSendTestPayrollWhatsApp = <TError = ErrorType<ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendTestPayrollWhatsApp>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof sendTestPayrollWhatsApp>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getSendTestPayrollWhatsAppMutationOptions(options));
     }
 

@@ -9,6 +9,8 @@ import employeesRouter from './employees';
 import payrollRouter from './payroll';
 import payrollRunsRouter from './payrollRuns';
 import payslipsRouter from './payslips';
+import payslipSharesRouter from './payslipShares';
+import payrollWhatsAppRouter from './payrollWhatsApp';
 
 const router = Router();
 
@@ -22,5 +24,7 @@ router.use(employeesRouter);
 router.use(payrollRouter);
 router.use(payrollRunsRouter);
 router.use(payslipsRouter);
+router.use(payslipSharesRouter);
+router.use(payrollWhatsAppRouter);
 
 export default router;

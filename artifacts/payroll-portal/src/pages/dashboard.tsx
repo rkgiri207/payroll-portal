@@ -11,6 +11,7 @@ import { useGetDashboardStats } from "@workspace/api-client-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatDate } from "@/lib/utils"
+import { Link } from "wouter"
 
 export default function DashboardPage() {
   const { data: stats, isLoading } = useGetDashboardStats()
@@ -33,6 +34,7 @@ export default function DashboardPage() {
           isLoading={isLoading} 
           emptyMessage="No employees found"
           testid="stat-employees"
+          href="/employees"
         />
         <StatCard 
           title="Payroll Runs" 
@@ -41,6 +43,7 @@ export default function DashboardPage() {
           isLoading={isLoading} 
           emptyMessage="No runs executed"
           testid="stat-payroll-runs"
+          href="/payroll/history"
         />
         <StatCard 
           title="Payslips Generated" 
@@ -49,6 +52,7 @@ export default function DashboardPage() {
           isLoading={isLoading} 
           emptyMessage="No payslips yet"
           testid="stat-payslips"
+          href="/payslips"
         />
       </div>
 
@@ -130,7 +134,8 @@ function StatCard({
   icon: Icon, 
   isLoading, 
   emptyMessage,
-  testid
+  testid,
+  href,
 }: { 
   title: string
   value?: number
@@ -138,9 +143,11 @@ function StatCard({
   isLoading: boolean
   emptyMessage: string
   testid: string
+  href: string
 }) {
   return (
-    <Card data-testid={testid}>
+    <Link href={href} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" data-testid={`${testid}-link`}>
+    <Card data-testid={testid} className="h-full cursor-pointer transition-colors hover:bg-muted/40">
       <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
@@ -164,5 +171,6 @@ function StatCard({
         )}
       </CardContent>
     </Card>
+    </Link>
   )
 }

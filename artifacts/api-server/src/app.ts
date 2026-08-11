@@ -6,6 +6,7 @@ import connectPgSimple from "connect-pg-simple";
 import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import publicPayslipsRouter from './routes/publicPayslips';
 
 const app: Express = express();
 
@@ -29,8 +30,13 @@ app.use(
   }),
 );
 
+const appBaseUrl = process.env.APP_BASE_URL;
+if (!appBaseUrl) {
+  throw new Error("APP_BASE_URL environment variable is required");
+}
+
 app.use(cors({
-  origin: true,
+  origin: appBaseUrl,
   credentials: true,
 }));
 
@@ -65,6 +71,7 @@ app.use(
   }),
 );
 
+app.use(publicPayslipsRouter);
 app.use("/api", router);
 
 export default app;

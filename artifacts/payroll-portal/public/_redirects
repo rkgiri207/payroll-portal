@@ -1,0 +1,3 @@
+/api/*  https://payroll-portal-api-dev.onrender.com/api/:splat  200
+/p/*    https://payroll-portal-api-dev.onrender.com/p/:splat    200
+/*      /index.html                                             200

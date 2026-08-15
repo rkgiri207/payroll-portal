@@ -7,32 +7,59 @@ import { createAuditLog } from "../lib/audit";
 
 const router: IRouter = Router();
 
-function getDatabaseErrorDetails(error: unknown): {
+type DatabaseErrorDetails = {
   errorName: string;
-  postgresCode?: string;
-  sanitizedMessage: string;
-} {
-  let current = error;
+  errorCode?: string;
+  errorMessage: string;
+  severity?: string;
+  errorType: string;
+};
+
+function sanitizeDatabaseErrorMessage(message: string): string {
+  return message
+    .replace(/postgres(?:ql)?:\/\/[^\s]+/gi, "[REDACTED_DATABASE_URL]")
+    .replace(/(password\s*[=:]\s*)[^\s,;]+/gi, "$1[REDACTED]");
+}
+
+function getDatabaseErrorChain(error: unknown): DatabaseErrorDetails[] {
+  const chain: DatabaseErrorDetails[] = [];
+  const seen = new Set<unknown>();
+  let current: unknown = error;
 
   while (
-    current instanceof Error &&
-    "cause" in current &&
-    current.cause instanceof Error
+    current !== null &&
+    (typeof current === "object" || typeof current === "function") &&
+    !seen.has(current)
   ) {
-    current = current.cause;
+    seen.add(current);
+
+    const record = current as {
+      name?: unknown;
+      code?: unknown;
+      message?: unknown;
+      severity?: unknown;
+      cause?: unknown;
+    };
+    const message =
+      typeof record.message === "string"
+        ? record.message
+        : "Unknown database error";
+
+    chain.push({
+      errorName: typeof record.name === "string" ? record.name : "UnknownError",
+      ...(typeof record.code === "string" ? { errorCode: record.code } : {}),
+      errorMessage: sanitizeDatabaseErrorMessage(message),
+      ...(typeof record.severity === "string" ? { severity: record.severity } : {}),
+      errorType:
+        typeof record.constructor?.name === "string"
+          ? record.constructor.name
+          : typeof current,
+    });
+
+    current = record.cause;
   }
 
-  const record = current as { name?: unknown; code?: unknown; message?: unknown };
-  const message =
-    typeof record?.message === "string" ? record.message : "Unknown database error";
-
-  return {
-    errorName: typeof record?.name === "string" ? record.name : "UnknownError",
-    ...(typeof record?.code === "string" ? { postgresCode: record.code } : {}),
-    sanitizedMessage: message
-      .replace(/postgres(?:ql)?:\/\/[^\s]+/gi, "[REDACTED_DATABASE_URL]")
-      .replace(/(password\s*[=:]\s*)[^\s,;]+/gi, "$1[REDACTED]"),
-  };
+  return chain;
 }
 
 router.post("/auth/login", async (req, res): Promise<void> => {
@@ -53,13 +80,12 @@ router.post("/auth/login", async (req, res): Promise<void> => {
       .where(eq(usersTable.email, email.toLowerCase().trim()))
       .limit(1);
   } catch (error) {
-    req.log.error(
-      {
+    for (const details of getDatabaseErrorChain(error)) {
+      req.log.error({
         operation: "auth.login.users_lookup",
-        ...getDatabaseErrorDetails(error),
-      },
-      "Database operation failed",
-    );
+        ...details,
+      });
+    }
     throw error;
   }
 

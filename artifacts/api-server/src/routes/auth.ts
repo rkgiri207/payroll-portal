@@ -7,6 +7,34 @@ import { createAuditLog } from "../lib/audit";
 
 const router: IRouter = Router();
 
+function getDatabaseErrorDetails(error: unknown): {
+  errorName: string;
+  postgresCode?: string;
+  sanitizedMessage: string;
+} {
+  let current = error;
+
+  while (
+    current instanceof Error &&
+    "cause" in current &&
+    current.cause instanceof Error
+  ) {
+    current = current.cause;
+  }
+
+  const record = current as { name?: unknown; code?: unknown; message?: unknown };
+  const message =
+    typeof record?.message === "string" ? record.message : "Unknown database error";
+
+  return {
+    errorName: typeof record?.name === "string" ? record.name : "UnknownError",
+    ...(typeof record?.code === "string" ? { postgresCode: record.code } : {}),
+    sanitizedMessage: message
+      .replace(/postgres(?:ql)?:\/\/[^\s]+/gi, "[REDACTED_DATABASE_URL]")
+      .replace(/(password\s*[=:]\s*)[^\s,;]+/gi, "$1[REDACTED]"),
+  };
+}
+
 router.post("/auth/login", async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);
   if (!parsed.success) {
@@ -17,11 +45,23 @@ router.post("/auth/login", async (req, res): Promise<void> => {
   const { email, password } = parsed.data;
 
   // Look up user — do not reveal whether email exists
-  const [user] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.email, email.toLowerCase().trim()))
-    .limit(1);
+  let user;
+  try {
+    [user] = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, email.toLowerCase().trim()))
+      .limit(1);
+  } catch (error) {
+    req.log.error(
+      {
+        operation: "auth.login.users_lookup",
+        ...getDatabaseErrorDetails(error),
+      },
+      "Database operation failed",
+    );
+    throw error;
+  }
 
   const invalidMsg = "Invalid email or password";
 

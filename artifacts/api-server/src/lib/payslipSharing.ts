@@ -78,8 +78,8 @@ async function renderPayslip(payrollRecordId: number): Promise<{ buffer: Buffer;
   if (!company) throw new Error('Company settings are required before sharing a payslip');
 
   registerPayslipFonts(
-    path.resolve(process.cwd(), 'artifacts/payroll-portal/public/fonts/NotoSans-Regular.ttf'),
-    path.resolve(process.cwd(), 'artifacts/payroll-portal/public/fonts/NotoSans-Bold.ttf'),
+    path.resolve(process.cwd(), '../payroll-portal/public/fonts/NotoSans-Regular.ttf'),
+    path.resolve(process.cwd(), '../payroll-portal/public/fonts/NotoSans-Bold.ttf'),
   );
   const run = { payrollMonth: row.run.payrollMonth, payrollYear: row.run.payrollYear };
   const document = React.createElement(PayslipDocument, {

@@ -1,8 +1,10 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { LayoutShell } from '@/components/layout/shell';
+import { toast } from '@/hooks/use-toast';
+import { SESSION_EXPIRED_EVENT } from '@/lib/session-expiration';
 
 import LoginPage from '@/pages/login';
 import DashboardPage from '@/pages/dashboard';
@@ -66,10 +68,40 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
   return <ErrorBoundary resetKey={location}>{children}</ErrorBoundary>;
 }
 
+function SessionExpirationHandler() {
+  const [location, setLocation] = useLocation();
+  const redirectingRef = useRef(false);
+
+  useEffect(() => {
+    if (location === '/login') {
+      redirectingRef.current = false;
+    }
+
+    const handleSessionExpired = () => {
+      if (location === '/login' || redirectingRef.current) return;
+
+      redirectingRef.current = true;
+      queryClient.clear();
+      toast({
+        title: 'Session expired',
+        description: 'Your session has expired. Please log in again.',
+        variant: 'destructive',
+      });
+      setLocation('/login');
+    };
+
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
+  }, [location, setLocation]);
+
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+        <SessionExpirationHandler />
         <RoutedErrorBoundary>
           <Router />
         </RoutedErrorBoundary>

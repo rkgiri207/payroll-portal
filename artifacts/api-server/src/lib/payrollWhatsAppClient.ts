@@ -54,6 +54,10 @@ function templateComponents(input: PayslipTemplateInput) {
     language,
     components: [
       {
+        type: 'header',
+        parameters: [{ type: 'text', text: input.period }],
+      },
+      {
         type: 'body',
         parameters: [input.employeeName, input.period, input.employeeReference]
           .map(text => ({ type: 'text', text })),

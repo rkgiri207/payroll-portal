@@ -59,7 +59,7 @@ function templateComponents(input: PayslipTemplateInput) {
       },
       {
         type: 'body',
-        parameters: [input.employeeName, input.period, input.employeeReference]
+        parameters: [input.employeeName, input.period]
           .map(text => ({ type: 'text', text })),
       },
       {

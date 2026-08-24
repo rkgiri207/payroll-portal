@@ -1,4 +1,5 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import React from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
@@ -20,6 +21,16 @@ import { ObjectNotFoundError, ObjectStorageService, STORAGE_BUCKETS } from './ob
 
 const SHARE_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
 const storage = new ObjectStorageService();
+
+function payslipFontPath(filename: string): string {
+  const candidates = [
+    path.resolve(process.cwd(), '../payroll-portal/public/fonts', filename),
+    path.resolve(process.cwd(), 'artifacts/payroll-portal/public/fonts', filename),
+  ];
+  const fontPath = candidates.find(candidate => existsSync(candidate));
+  if (!fontPath) throw new Error(`Payslip font is missing from the deployment: ${filename}`);
+  return fontPath;
+}
 
 function sessionSecret(): string {
   const value = process.env.SESSION_SECRET;
@@ -78,8 +89,8 @@ async function renderPayslip(payrollRecordId: number): Promise<{ buffer: Buffer;
   if (!company) throw new Error('Company settings are required before sharing a payslip');
 
   registerPayslipFonts(
-    path.resolve(process.cwd(), '../payroll-portal/public/fonts/NotoSans-Regular.ttf'),
-    path.resolve(process.cwd(), '../payroll-portal/public/fonts/NotoSans-Bold.ttf'),
+    payslipFontPath('NotoSans-Regular.ttf'),
+    payslipFontPath('NotoSans-Bold.ttf'),
   );
   const run = { payrollMonth: row.run.payrollMonth, payrollYear: row.run.payrollYear };
   const document = React.createElement(PayslipDocument, {

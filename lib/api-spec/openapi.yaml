@@ -1025,6 +1025,8 @@ components:
           type: string
         otherEarnings:
           type: string
+        additionalEarnings:
+          type: string
         grossSalary:
           type: string
         pfEmployee:

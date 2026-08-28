@@ -46,6 +46,7 @@ const OPTIONAL_FIELDS = [
   { key: 'da', label: 'DA' },
   { key: 'hra', label: 'HRA' },
   { key: 'otherEarnings', label: 'Other Earnings' },
+  { key: 'additionalEarnings', label: 'Additional Earnings Field' },
   { key: 'grossSalary', label: 'Gross Salary' },
   { key: 'pfEmployee', label: 'PF — Employee Contribution (12%)' },
   { key: 'pfEmployer', label: 'PF — Employer Contribution' },
@@ -74,6 +75,7 @@ export default function PayrollWizardPage() {
   const [selectedSheet, setSelectedSheet] = useState('');
   const [excelHeaders, setExcelHeaders] = useState<string[]>([]);
   const [rowCount, setRowCount] = useState(0);
+  const [isStep1Processing, setIsStep1Processing] = useState(false);
   
   // Step 2 mapping
   const { data: savedMapping } = useGetColumnMapping();
@@ -121,8 +123,9 @@ export default function PayrollWizardPage() {
   };
 
   const handleStep1Next = async () => {
-    if (!file) return;
-    
+    if (!file || isStep1Processing) return;
+
+    setIsStep1Processing(true);
     try {
       // 1. Get upload URL
       const { uploadURL, objectPath: path } = await reqUrlMut.mutateAsync({
@@ -172,6 +175,8 @@ export default function PayrollWizardPage() {
       setStep(2);
     } catch (err: any) {
       toast({ title: 'Upload Failed', description: err.message || 'An error occurred during upload', variant: 'destructive' });
+    } finally {
+      setIsStep1Processing(false);
     }
   };
 
@@ -339,9 +344,9 @@ export default function PayrollWizardPage() {
             </div>
           </CardContent>
           <CardFooter className="justify-end border-t p-4">
-            <Button onClick={handleStep1Next} disabled={!file || isWorking} data-testid="btn-next-1">
-              {isWorking ? 'Uploading...' : 'Next Step'}
-              {!isWorking && <ChevronRight className="ml-2 h-4 w-4" />}
+            <Button onClick={handleStep1Next} disabled={!file || isStep1Processing} data-testid="btn-next-1">
+              {isStep1Processing ? 'Uploading...' : 'Next Step'}
+              {!isStep1Processing && <ChevronRight className="ml-2 h-4 w-4" />}
             </Button>
           </CardFooter>
         </Card>

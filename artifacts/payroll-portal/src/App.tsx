@@ -1,10 +1,18 @@
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider } from 'next-themes';
+import { Clock3 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { LayoutShell } from '@/components/layout/shell';
 import { toast } from '@/hooks/use-toast';
-import { SESSION_EXPIRED_EVENT } from '@/lib/session-expiration';
+import {
+  clearSessionDeadline,
+  getSessionDeadline,
+  installSessionActivityMonitor,
+  SESSION_EXPIRED_EVENT,
+  SESSION_STARTED_EVENT,
+} from '@/lib/session-expiration';
 
 import LoginPage from '@/pages/login';
 import DashboardPage from '@/pages/dashboard';
@@ -81,6 +89,7 @@ function SessionExpirationHandler() {
       if (location === '/login' || redirectingRef.current) return;
 
       redirectingRef.current = true;
+      clearSessionDeadline();
       queryClient.clear();
       toast({
         title: 'Session expired',
@@ -97,17 +106,86 @@ function SessionExpirationHandler() {
   return null;
 }
 
+function SessionExpiryWarning() {
+  const [location] = useLocation();
+  const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null);
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const deadline = getSessionDeadline();
+      if (!deadline) {
+        setSecondsRemaining(null);
+        return;
+      }
+
+      setSecondsRemaining(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+    };
+
+    updateCountdown();
+    const interval = window.setInterval(updateCountdown, 1_000);
+    window.addEventListener(SESSION_STARTED_EVENT, updateCountdown);
+    window.addEventListener(SESSION_EXPIRED_EVENT, updateCountdown);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener(SESSION_STARTED_EVENT, updateCountdown);
+      window.removeEventListener(SESSION_EXPIRED_EVENT, updateCountdown);
+    };
+  }, []);
+
+  if (location === '/login' || secondsRemaining === null || secondsRemaining > 10) {
+    return null;
+  }
+
+  return (
+    <div
+      className="fixed inset-x-3 top-3 z-[90] mx-auto flex max-w-md items-center gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950 shadow-lg dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100"
+      role="status"
+      aria-live="polite"
+      data-testid="session-expiry-warning"
+    >
+      <Clock3 className="h-5 w-5 shrink-0" />
+      <div className="min-w-0">
+        <p className="text-sm font-semibold">
+          {secondsRemaining > 0 ? 'Your session is about to expire.' : 'Your session has reached its time limit.'}
+        </p>
+        <p className="text-xs opacity-80">
+          {secondsRemaining > 0
+            ? `${secondsRemaining} second${secondsRemaining === 1 ? '' : 's'} remaining.`
+            : 'Your next protected action will return you to sign in.'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function SessionActivityMonitor() {
+  const [location] = useLocation();
+  const isLoginPage = location === '/login';
+
+  useEffect(() => {
+    if (isLoginPage) return;
+    return installSessionActivityMonitor();
+  }, [isLoginPage]);
+
+  return null;
+}
+
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-        <SessionExpirationHandler />
-        <RoutedErrorBoundary>
-          <Router />
-        </RoutedErrorBoundary>
-      </WouterRouter>
-      <Toaster />
-    </QueryClientProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="payroll-portal-theme">
+      <QueryClientProvider client={queryClient}>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+          <SessionExpirationHandler />
+          <SessionActivityMonitor />
+          <SessionExpiryWarning />
+          <RoutedErrorBoundary>
+            <Router />
+          </RoutedErrorBoundary>
+        </WouterRouter>
+        <Toaster />
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 

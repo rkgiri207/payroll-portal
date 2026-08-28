@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
@@ -97,44 +97,44 @@
 }
 
 .dark {
-  --background: 222 47% 11%;
-  --foreground: 210 40% 98%;
+  --background: 240 6% 10%;
+  --foreground: 240 5% 96%;
 
-  --card: 215 25% 15%;
-  --card-foreground: 210 40% 98%;
-  --card-border: 215 25% 22%;
+  --card: 240 5% 14%;
+  --card-foreground: 240 5% 96%;
+  --card-border: 240 4% 23%;
 
-  --border: 215 25% 22%;
-  --input: 215 25% 22%;
-  --ring: 214 32% 91%;
+  --border: 240 4% 23%;
+  --input: 240 4% 23%;
+  --ring: 251 78% 68%;
 
-  --popover: 215 25% 15%;
-  --popover-foreground: 210 40% 98%;
-  --popover-border: 215 25% 22%;
+  --popover: 240 5% 14%;
+  --popover-foreground: 240 5% 96%;
+  --popover-border: 240 4% 23%;
 
-  --primary: 210 40% 98%;
-  --primary-foreground: 222 47% 11%;
+  --primary: 251 78% 66%;
+  --primary-foreground: 0 0% 100%;
 
-  --secondary: 215 25% 22%;
-  --secondary-foreground: 210 40% 98%;
+  --secondary: 251 35% 22%;
+  --secondary-foreground: 250 80% 88%;
 
-  --muted: 215 25% 22%;
-  --muted-foreground: 215 20% 65%;
+  --muted: 240 4% 19%;
+  --muted-foreground: 240 5% 68%;
 
-  --accent: 215 25% 22%;
-  --accent-foreground: 210 40% 98%;
+  --accent: 168 28% 20%;
+  --accent-foreground: 165 45% 88%;
 
   --destructive: 346.8 77.2% 49.8%;
   --destructive-foreground: 0 0% 100%;
 
-  --sidebar: 215 25% 15%;
-  --sidebar-foreground: 210 40% 98%;
-  --sidebar-border: 215 25% 22%;
-  --sidebar-primary: 210 40% 98%;
-  --sidebar-primary-foreground: 222 47% 11%;
-  --sidebar-accent: 215 25% 22%;
-  --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-ring: 214 32% 91%;
+  --sidebar: 240 5% 13%;
+  --sidebar-foreground: 240 5% 96%;
+  --sidebar-border: 240 4% 23%;
+  --sidebar-primary: 251 78% 66%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 168 28% 20%;
+  --sidebar-accent-foreground: 165 45% 88%;
+  --sidebar-ring: 251 78% 68%;
 }
 
 @layer base {
@@ -163,4 +163,10 @@
 @keyframes page-enter {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes login-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }

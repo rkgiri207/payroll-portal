@@ -417,6 +417,7 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
       const da             = get(columnMapping.da);
       const hra            = get(columnMapping.hra);
       const otherEarnings  = get(columnMapping.otherEarnings);
+      const additionalEarnings = get(columnMapping.additionalEarnings);
       const grossSalary    = get(columnMapping.grossSalary);
       const pfEmployee      = get(columnMapping.pfEmployee);
       const pfEmployer      = get(columnMapping.pfEmployer);
@@ -429,6 +430,9 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
 
       // ── Additional/unmapped columns → additionalComponents JSONB ────────
       const additionalComponents: Record<string, string> = {};
+      if (columnMapping.additionalEarnings && additionalEarnings !== null) {
+        additionalComponents[columnMapping.additionalEarnings] = additionalEarnings;
+      }
       for (const [colName, value] of Object.entries(row)) {
         if (!knownMappedCols.has(colName)) {
           const normalized = normalizeSalaryValue(value);

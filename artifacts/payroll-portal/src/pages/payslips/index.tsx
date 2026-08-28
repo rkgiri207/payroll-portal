@@ -37,6 +37,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
   FileDown, RefreshCw, Eye, Download, Archive, Loader2, CheckCircle2, XCircle, AlertTriangle,
@@ -73,6 +74,24 @@ interface WhatsAppSendResult {
   timestamp?: string;
   error?: string;
   code?: string;
+}
+
+interface WhatsAppBatchPreview {
+  selected: number;
+  validMobile: number;
+  alreadySent: number;
+  willSend: number;
+  records: Array<{ payrollRecordId: number; eligible: boolean; reason?: string; code?: string; status?: string | null }>;
+}
+
+interface WhatsAppBatchResult {
+  batchId: string;
+  total: number;
+  sent: number;
+  failed: number;
+  pending: number;
+  skipped: number;
+  results: Array<{ payrollRecordId: number; status: 'PENDING' | 'SENT' | 'FAILED' | 'SKIPPED'; code?: string; error?: string }>;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -131,6 +150,18 @@ async function savePayslipStatuses(runId: number, updates: Array<{ payrollRecord
   }
 }
 
+async function postWhatsAppBatch<T>(path: 'preview' | 'send', body: object): Promise<T> {
+  const response = await fetch(`${API_BASE}/payroll-whatsapp/batch/${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw Object.assign(new Error(payload?.error ?? 'WhatsApp batch request failed'), { code: payload?.code });
+  return payload;
+}
+
 function triggerDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -176,6 +207,13 @@ export default function PayslipsPage() {
   const [whatsAppRecord, setWhatsAppRecord] = useState<PayslipRecord | null>(null);
   const [whatsAppSending, setWhatsAppSending] = useState(false);
   const [whatsAppResult, setWhatsAppResult] = useState<WhatsAppSendResult | null>(null);
+  const [selectedWhatsAppIds, setSelectedWhatsAppIds] = useState<Set<number>>(new Set());
+  const [whatsAppBatchOpen, setWhatsAppBatchOpen] = useState(false);
+  const [whatsAppBatchLoading, setWhatsAppBatchLoading] = useState(false);
+  const [whatsAppBatchPreview, setWhatsAppBatchPreview] = useState<WhatsAppBatchPreview | null>(null);
+  const [whatsAppBatchResult, setWhatsAppBatchResult] = useState<WhatsAppBatchResult | null>(null);
+  const [whatsAppBatchOverride, setWhatsAppBatchOverride] = useState(false);
+  const [whatsAppBatchProcessed, setWhatsAppBatchProcessed] = useState(0);
   const abortRef = useRef(false);
 
   // ── Queries ─────────────────────────────────────────────────────────────────
@@ -314,6 +352,54 @@ export default function PayslipsPage() {
     }
   };
 
+  const openWhatsAppBatch = async (ids: number[], override = false) => {
+    if (ids.length === 0) return;
+    setWhatsAppBatchOpen(true);
+    setWhatsAppBatchLoading(true);
+    setWhatsAppBatchPreview(null);
+    setWhatsAppBatchResult(null);
+    setWhatsAppBatchOverride(override);
+    setWhatsAppBatchProcessed(0);
+    try {
+      setWhatsAppBatchPreview(await postWhatsAppBatch<WhatsAppBatchPreview>('preview', { recordIds: ids, override }));
+    } catch (error) {
+      toast({ title: 'WhatsApp validation failed', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
+      setWhatsAppBatchOpen(false);
+    } finally {
+      setWhatsAppBatchLoading(false);
+    }
+  };
+
+  const handleWhatsAppBatchSend = async () => {
+    if (!whatsAppBatchPreview?.willSend) return;
+    const ids = whatsAppBatchPreview.records.filter(record => record.eligible).map(record => record.payrollRecordId);
+    setWhatsAppBatchLoading(true);
+    setWhatsAppBatchProcessed(0);
+    try {
+      const requestId = crypto.randomUUID();
+      const combined: WhatsAppBatchResult = { batchId: requestId, total: ids.length, sent: 0, failed: 0, pending: 0, skipped: 0, results: [] };
+      for (let offset = 0; offset < ids.length; offset += 10) {
+        const result = await postWhatsAppBatch<WhatsAppBatchResult>('send', {
+          recordIds: ids.slice(offset, offset + 10),
+          requestId,
+          override: whatsAppBatchOverride,
+        });
+        combined.sent += result.sent;
+        combined.failed += result.failed;
+        combined.pending += result.pending;
+        combined.skipped += result.skipped;
+        combined.results.push(...result.results);
+        setWhatsAppBatchProcessed(Math.min(offset + 10, ids.length));
+      }
+      setWhatsAppBatchResult(combined);
+      setSelectedWhatsAppIds(new Set());
+    } catch (error) {
+      toast({ title: 'Bulk WhatsApp send failed', description: error instanceof Error ? error.message : 'Unknown error', variant: 'destructive' });
+    } finally {
+      setWhatsAppBatchLoading(false);
+    }
+  };
+
   // ── Generate all + ZIP ─────────────────────────────────────────────────────
   const handleGenerateAll = async (downloadZip = false) => {
     if (!run || !selectedRunId || records.length === 0) return;
@@ -372,7 +458,9 @@ export default function PayslipsPage() {
     setIsDownloadingAll(false);
   };
 
-  const isBusy = isGeneratingAll || isDownloadingAll;
+  const isBusy = isGeneratingAll || isDownloadingAll || whatsAppBatchLoading;
+  const visibleIds = filtered.map(record => record.id);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selectedWhatsAppIds.has(id));
 
   // ── Render ─────────────────────────────────────────────────────────────────
   const activeRuns = [...(runsData?.runs?.filter(r => r.status !== 'CANCELLED') ?? [])]
@@ -399,6 +487,7 @@ export default function PayslipsPage() {
               setSelectedRunId(Number(v));
               setSearch('');
               setStatuses(new Map());
+              setSelectedWhatsAppIds(new Set());
               setBulkProgress(null);
             }}
           >
@@ -438,6 +527,14 @@ export default function PayslipsPage() {
                         {records.length} employees · Gross: {formatINR(runDetail.totalGross)} · Net: {formatINR(runDetail.totalNet)}
                       </p>
                     </div>
+                    <Button
+                      onClick={() => void openWhatsAppBatch([...selectedWhatsAppIds])}
+                      disabled={isBusy || selectedWhatsAppIds.size === 0}
+                      variant="outline"
+                    >
+                      {whatsAppBatchLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageCircle className="mr-2 h-4 w-4" />}
+                      Send WhatsApp Payslips ({selectedWhatsAppIds.size})
+                    </Button>
                     <Button
                       onClick={() => handleGenerateAll(false)}
                       disabled={isBusy || records.length === 0}
@@ -501,6 +598,17 @@ export default function PayslipsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={allVisibleSelected ? true : selectedWhatsAppIds.size > 0 && visibleIds.some(id => selectedWhatsAppIds.has(id)) ? 'indeterminate' : false}
+                            onCheckedChange={checked => setSelectedWhatsAppIds(previous => {
+                              const next = new Set(previous);
+                              for (const id of visibleIds) checked ? next.add(id) : next.delete(id);
+                              return next;
+                            })}
+                            aria-label="Select all visible payroll records"
+                          />
+                        </TableHead>
                         <TableHead>Employee ID</TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Designation</TableHead>
@@ -512,7 +620,7 @@ export default function PayslipsPage() {
                     <TableBody>
                       {filtered.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                          <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                             {search ? 'No employees match your search.' : 'No employees in this run.'}
                           </TableCell>
                         </TableRow>
@@ -521,6 +629,17 @@ export default function PayslipsPage() {
                         const isThisGenerating = generatingId === record.id;
                         return (
                           <TableRow key={record.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedWhatsAppIds.has(record.id)}
+                                onCheckedChange={checked => setSelectedWhatsAppIds(previous => {
+                                  const next = new Set(previous);
+                                  checked ? next.add(record.id) : next.delete(record.id);
+                                  return next;
+                                })}
+                                aria-label={`Select ${record.employeeName}`}
+                              />
+                            </TableCell>
                             <TableCell className="font-mono text-sm">{record.employeeCode}</TableCell>
                             <TableCell className="font-medium">{record.employeeName}</TableCell>
                             <TableCell className="text-sm text-muted-foreground">
@@ -610,9 +729,10 @@ export default function PayslipsPage() {
                 </div>
 
                 {filtered.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Showing {filtered.length} of {records.length} employees
-                  </p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <p>Showing {filtered.length} of {records.length} employees</p>
+                    <p>{selectedWhatsAppIds.size} selected</p>
+                  </div>
                 )}
               </div>
             </>
@@ -647,6 +767,65 @@ export default function PayslipsPage() {
               </PDFViewer>
             ) : null}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={whatsAppBatchOpen} onOpenChange={open => { if (!whatsAppBatchLoading) setWhatsAppBatchOpen(open); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Send WhatsApp Payslips</DialogTitle>
+            <DialogDescription>Confirm the eligible recipients before the server processes this batch.</DialogDescription>
+          </DialogHeader>
+          {whatsAppBatchLoading && !whatsAppBatchResult ? (
+            <div className="space-y-3 py-4">
+              <div className="flex items-center gap-2 text-sm"><Loader2 className="h-4 w-4 animate-spin" />Sending payslips...</div>
+              <Progress value={whatsAppBatchPreview ? (whatsAppBatchProcessed / Math.max(whatsAppBatchPreview.willSend, 1)) * 100 : 5} />
+              <p className="text-xs text-muted-foreground">
+                {whatsAppBatchPreview ? `Processing ${whatsAppBatchProcessed} of ${whatsAppBatchPreview.willSend}` : 'Validating selected records'}
+              </p>
+            </div>
+          ) : whatsAppBatchResult ? (
+            <div className="space-y-3 text-sm">
+              <p className="font-medium">WhatsApp Payslip Summary</p>
+              <div className="grid grid-cols-2 gap-2 rounded-md border p-3">
+                <span>Sent</span><strong>{whatsAppBatchResult.sent}</strong>
+                <span>Failed</span><strong>{whatsAppBatchResult.failed}</strong>
+                <span>Pending confirmation</span><strong>{whatsAppBatchResult.pending}</strong>
+                <span>Skipped</span><strong>{whatsAppBatchResult.skipped}</strong>
+              </div>
+              {whatsAppBatchResult.results.filter(result => result.status !== 'SENT').map(result => {
+                const record = records.find(candidate => candidate.id === result.payrollRecordId);
+                return <p key={result.payrollRecordId} className="text-xs text-red-700">{record?.employeeCode ?? result.payrollRecordId}: {result.error}</p>;
+              })}
+            </div>
+          ) : whatsAppBatchPreview ? (
+            <div className="space-y-3 text-sm">
+              <p className="text-base font-medium">Send payslips to {whatsAppBatchPreview.willSend} employees?</p>
+              <div className="grid grid-cols-2 gap-2 rounded-md border p-3">
+                <span>Selected</span><strong>{whatsAppBatchPreview.selected}</strong>
+                <span>Valid mobile numbers</span><strong>{whatsAppBatchPreview.validMobile}</strong>
+                <span>Already sent</span><strong>{whatsAppBatchPreview.alreadySent}</strong>
+                <span>Will actually send</span><strong>{whatsAppBatchPreview.willSend}</strong>
+              </div>
+              {whatsAppBatchPreview.records.some(record => !record.eligible) ? (
+                <div className="max-h-36 space-y-1 overflow-y-auto rounded-md bg-muted p-3">
+                  <p className="font-medium">Not eligible</p>
+                  {whatsAppBatchPreview.records.filter(record => !record.eligible).map(item => {
+                    const record = records.find(candidate => candidate.id === item.payrollRecordId);
+                    return <p key={item.payrollRecordId} className="text-xs">{record?.employeeCode ?? item.payrollRecordId}: {item.reason}</p>;
+                  })}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWhatsAppBatchOpen(false)} disabled={whatsAppBatchLoading}>Close</Button>
+            {!whatsAppBatchResult && whatsAppBatchPreview ? (
+              <Button onClick={handleWhatsAppBatchSend} disabled={whatsAppBatchLoading || whatsAppBatchPreview.willSend === 0}>
+                <MessageCircle className="mr-2 h-4 w-4" />Confirm Send
+              </Button>
+            ) : null}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

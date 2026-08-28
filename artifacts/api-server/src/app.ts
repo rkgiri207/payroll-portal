@@ -62,6 +62,7 @@ app.use(
     name: "payroll.sid",
     secret: sessionSecret,
     resave: false,
+    rolling: true,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,

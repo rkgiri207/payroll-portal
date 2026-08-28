@@ -102,7 +102,7 @@ export async function sendPayrollPayslipTemplate(input: PayslipTemplateInput): P
   const body: any = await response.json().catch(() => null);
   if (!response.ok) {
     const safe = safeMetaError(body, response.status);
-    throw Object.assign(new Error(safe.message), { code: safe.code });
+    throw Object.assign(new Error(safe.message), { code: safe.code, definitive: true });
   }
   const messageId = body?.messages?.[0]?.id;
   if (typeof messageId !== 'string' || !messageId) {

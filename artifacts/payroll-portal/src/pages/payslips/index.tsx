@@ -41,7 +41,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
   FileDown, RefreshCw, Eye, Download, Archive, Loader2, CheckCircle2, XCircle, AlertTriangle,
-  Share2, Copy, Check, MessageCircle,
+  Share2, Copy, Check, MessageCircle, Send,
 } from 'lucide-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -52,6 +52,8 @@ interface StatusEntry {
   status: GenerationStatus;
   generatedAt?: string | null;
   errorMessage?: string | null;
+  whatsappStatus?: string | null;
+  whatsappTimestamp?: string | null;
 }
 
 interface BulkProgress {
@@ -129,7 +131,13 @@ async function fetchPayslipStatuses(runId: number): Promise<Map<number, StatusEn
     const data = await res.json();
     const map = new Map<number, StatusEntry>();
     for (const s of data.statuses ?? []) {
-      map.set(s.payrollRecordId, { status: s.status, generatedAt: s.generatedAt, errorMessage: s.errorMessage });
+      map.set(s.payrollRecordId, {
+        status: s.status,
+        generatedAt: s.generatedAt,
+        errorMessage: s.errorMessage,
+        whatsappStatus: s.whatsappStatus,
+        whatsappTimestamp: s.whatsappTimestamp,
+      });
     }
     return map;
   } catch {
@@ -177,6 +185,24 @@ function StatusBadge({ status }: { status: GenerationStatus }) {
   if (status === 'GENERATED')     return <Badge className="bg-green-600 text-white hover:bg-green-700 gap-1"><CheckCircle2 className="h-3 w-3" />Generated</Badge>;
   if (status === 'FAILED')        return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" />Failed</Badge>;
   return <Badge variant="secondary" className="gap-1 text-muted-foreground">Not Generated</Badge>;
+}
+
+function WhatsAppStatus({ status, timestamp }: { status?: string | null; timestamp?: string | null }) {
+  if (status === 'SENT') {
+    return (
+      <span className="flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400">
+        <Send className="h-3 w-3" />Sent · {formatDateTime(timestamp)}
+      </span>
+    );
+  }
+  if (status === 'FAILED') {
+    return (
+      <span className="flex items-center gap-1 text-xs text-destructive">
+        <XCircle className="h-3 w-3" />Failed · {formatDateTime(timestamp)}
+      </span>
+    );
+  }
+  return <span className="text-xs text-muted-foreground">Not Sent</span>;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -348,6 +374,7 @@ export default function PayslipsPage() {
         code: body?.code,
       });
     } finally {
+      if (selectedRunId) setStatuses(await fetchPayslipStatuses(selectedRunId));
       setWhatsAppSending(false);
     }
   };
@@ -390,6 +417,7 @@ export default function PayslipsPage() {
         combined.skipped += result.skipped;
         combined.results.push(...result.results);
         setWhatsAppBatchProcessed(Math.min(offset + 10, ids.length));
+        if (selectedRunId) setStatuses(await fetchPayslipStatuses(selectedRunId));
       }
       setWhatsAppBatchResult(combined);
       setSelectedWhatsAppIds(new Set());
@@ -649,6 +677,9 @@ export default function PayslipsPage() {
                             <TableCell>
                               <div className="flex flex-col gap-0.5">
                                 <StatusBadge status={entry.status} />
+                                {entry.status === 'GENERATED' && (
+                                  <WhatsAppStatus status={entry.whatsappStatus} timestamp={entry.whatsappTimestamp} />
+                                )}
                                 {entry.errorMessage && (
                                   <span className="text-xs text-red-500 max-w-[180px] truncate" title={entry.errorMessage}>
                                     {entry.errorMessage}

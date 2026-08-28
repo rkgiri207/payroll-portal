@@ -10,8 +10,9 @@ import {
   payrollRecordsTable,
   payrollRunsTable,
   payslipGenerationsTable,
+  payrollWhatsAppLogsTable,
 } from '@workspace/db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { desc, eq, inArray } from 'drizzle-orm';
 import { requireAuth } from '../middlewares/requireAuth';
 import { ObjectStorageService, STORAGE_BUCKETS } from '../lib/objectStorage';
 
@@ -46,7 +47,40 @@ router.get('/payroll-runs/:id/payslip-statuses', requireAuth, async (req: Reques
     .from(payslipGenerationsTable)
     .where(eq(payslipGenerationsTable.payrollRunId, runId));
 
-  res.json({ statuses });
+  const recordIds = statuses.map(status => status.payrollRecordId);
+  const latestWhatsAppByRecord = new Map<number, { status: string; timestamp: Date }>();
+
+  if (recordIds.length > 0) {
+    const whatsappLogs = await db
+      .select({
+        payrollRecordId: payrollWhatsAppLogsTable.payrollRecordId,
+        status: payrollWhatsAppLogsTable.status,
+        timestamp: payrollWhatsAppLogsTable.updatedAt,
+      })
+      .from(payrollWhatsAppLogsTable)
+      .where(inArray(payrollWhatsAppLogsTable.payrollRecordId, recordIds))
+      .orderBy(desc(payrollWhatsAppLogsTable.createdAt), desc(payrollWhatsAppLogsTable.id));
+
+    for (const log of whatsappLogs) {
+      if (!latestWhatsAppByRecord.has(log.payrollRecordId)) {
+        latestWhatsAppByRecord.set(log.payrollRecordId, {
+          status: log.status,
+          timestamp: log.timestamp,
+        });
+      }
+    }
+  }
+
+  res.json({
+    statuses: statuses.map(status => {
+      const whatsapp = latestWhatsAppByRecord.get(status.payrollRecordId);
+      return {
+        ...status,
+        whatsappStatus: whatsapp?.status ?? null,
+        whatsappTimestamp: whatsapp?.timestamp ?? null,
+      };
+    }),
+  });
 });
 
 // ─── PATCH /payroll-runs/:id/payslip-statuses ─────────────────────────────────

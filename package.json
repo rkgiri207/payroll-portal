@@ -7,8 +7,8 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
-    "deploy:cloudflare": "corepack pnpm --filter @workspace/payroll-portal build && powershell -Command \"Remove-Item -Force -ErrorAction SilentlyContinue artifacts/payroll-portal/dist/_redirects\" && npx wrangler deploy"
-  },
+"deploy:cloudflare": "powershell -ExecutionPolicy Bypass -File scripts/deploy-cloudflare.ps1",
+"deploy:cloudflare:dry": "powershell -ExecutionPolicy Bypass -File scripts/deploy-cloudflare.ps1 -DryRun"  },
   "private": true,
   "devDependencies": {
     "prettier": "^3.9.6",

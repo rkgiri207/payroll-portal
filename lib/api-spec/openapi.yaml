@@ -1117,6 +1117,9 @@ components:
                 type: number
               rowIndex:
                 type: number
+              source:
+                type: string
+                enum: [formula, formula-pattern]
 
     PayrollValidationSummary:
       type: object

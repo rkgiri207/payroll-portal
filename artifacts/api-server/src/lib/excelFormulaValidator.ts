@@ -6,6 +6,7 @@ export interface FormulaDiscrepancy {
   excelValue: number;
   expectedValue: number;
   rowIndex: number;
+  source?: 'formula' | 'formula-pattern';
 }
 
 type FormulaValue = number | number[];
@@ -17,6 +18,22 @@ type Token =
 const CURRENCY_TOLERANCE = 0.01;
 
 class UnsupportedFormulaError extends Error {}
+
+function translateFormula(formula: string, sourceAddress: string, targetAddress: string): string {
+  const source = XLSX.utils.decode_cell(sourceAddress);
+  const target = XLSX.utils.decode_cell(targetAddress);
+  const rowOffset = target.r - source.r;
+  const columnOffset = target.c - source.c;
+
+  return formula.replace(/(?<![A-Za-z0-9_.])(\$?)([A-Za-z]{1,3})(\$?)(\d+)/g, (_match, absoluteColumn, columnName, absoluteRow, rowNumber) => {
+    const column = XLSX.utils.decode_col(columnName.toUpperCase());
+    const row = Number(rowNumber) - 1;
+    const translatedColumn = absoluteColumn ? column : column + columnOffset;
+    const translatedRow = absoluteRow ? row : row + rowOffset;
+    if (translatedColumn < 0 || translatedRow < 0) throw new UnsupportedFormulaError('Translated reference is outside the worksheet');
+    return `${absoluteColumn}${XLSX.utils.encode_col(translatedColumn)}${absoluteRow}${translatedRow + 1}`;
+  });
+}
 
 function tokenize(formula: string): Token[] {
   const tokens: Token[] = [];
@@ -272,10 +289,62 @@ export function findFormulaDiscrepancies(worksheet: XLSX.WorkSheet): FormulaDisc
           excelValue: cell.v,
           expectedValue,
           rowIndex: XLSX.utils.decode_cell(address).r + 1,
+          source: 'formula',
         });
       }
     } catch (error) {
       if (!(error instanceof UnsupportedFormulaError)) throw error;
+    }
+  }
+
+  const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+  const formulaCellsByColumn = new Map<number, Array<{ address: string; formula: string }>>();
+  for (const address of Object.keys(worksheet)) {
+    if (address.startsWith('!')) continue;
+    const cell = worksheet[address] as XLSX.CellObject;
+    if (typeof cell.f !== 'string' || !cell.f.trim()) continue;
+    const column = XLSX.utils.decode_cell(address).c;
+    const formulas = formulaCellsByColumn.get(column) ?? [];
+    formulas.push({ address, formula: cell.f });
+    formulaCellsByColumn.set(column, formulas);
+  }
+
+  for (const [column, formulas] of formulaCellsByColumn) {
+    const anchorAddress = XLSX.utils.encode_cell({ r: range.s.r + 1, c: column });
+    let canonicalFormula: string;
+    try {
+      canonicalFormula = translateFormula(formulas[0].formula, formulas[0].address, anchorAddress);
+      const consistentPattern = formulas.every(candidate =>
+        translateFormula(candidate.formula, candidate.address, anchorAddress) === canonicalFormula,
+      );
+      if (!consistentPattern) continue;
+    } catch (error) {
+      if (error instanceof UnsupportedFormulaError) continue;
+      throw error;
+    }
+
+    for (let row = range.s.r + 1; row <= range.e.r; row++) {
+      const address = XLSX.utils.encode_cell({ r: row, c: column });
+      const cell = worksheet[address] as XLSX.CellObject | undefined;
+      if (!cell || typeof cell.f === 'string' || typeof cell.v !== 'number') continue;
+      try {
+        const inferredFormula = translateFormula(formulas[0].formula, formulas[0].address, address);
+        const expectedValue = new FormulaParser(tokenize(inferredFormula), evaluateCell, evaluateRange).parse();
+        const difference = Math.abs(expectedValue - cell.v);
+        const tolerance = Math.max(CURRENCY_TOLERANCE, Math.abs(expectedValue) * 1e-10);
+        if (difference > tolerance) {
+          discrepancies.push({
+            cell: address,
+            formula: inferredFormula,
+            excelValue: cell.v,
+            expectedValue,
+            rowIndex: row + 1,
+            source: 'formula-pattern',
+          });
+        }
+      } catch (error) {
+        if (!(error instanceof UnsupportedFormulaError)) throw error;
+      }
     }
   }
   return discrepancies;

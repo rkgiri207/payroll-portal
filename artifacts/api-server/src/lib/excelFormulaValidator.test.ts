@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as XLSX from 'xlsx';
 import type { WorkSheet } from 'xlsx';
@@ -98,5 +99,74 @@ test('serialized workbook retains stale cached values through the production par
 
 test('serialized workbook with correct cached results produces no findings', () => {
   const parsed = parseExcelBuffer(serializedPayrollWorkbook(300, 600), 'Payroll');
+  assert.deepEqual(parsed.formulaDiscrepancies, []);
+});
+
+test('infers a formula pattern for an incorrect hardcoded result in the same column', () => {
+  const findings = findFormulaDiscrepancies({
+    A2: { t: 'n', v: 100 }, B2: { t: 'n', v: 200 }, C2: { t: 'n', f: 'A2+B2', v: 300 },
+    A3: { t: 'n', v: 150 }, B3: { t: 'n', v: 250 }, C3: { t: 'n', v: 350 },
+    '!ref': 'A1:C3',
+  });
+  assert.deepEqual(findings.map(finding => ({
+    cell: finding.cell,
+    excelValue: finding.excelValue,
+    expectedValue: finding.expectedValue,
+    source: finding.source,
+  })), [{ cell: 'C3', excelValue: 350, expectedValue: 400, source: 'formula-pattern' }]);
+});
+
+test('does not warn for a correct hardcoded result matching an inferred formula pattern', () => {
+  const findings = findFormulaDiscrepancies({
+    A2: { t: 'n', v: 100 }, B2: { t: 'n', v: 200 }, C2: { t: 'n', f: 'A2+B2', v: 300 },
+    A3: { t: 'n', v: 150 }, B3: { t: 'n', v: 250 }, C3: { t: 'n', v: 400 },
+    '!ref': 'A1:C3',
+  });
+  assert.deepEqual(findings, []);
+});
+
+test('translates absolute and relative references for multiple hardcoded employee rows', () => {
+  const findings = findFormulaDiscrepancies({
+    A2: { t: 'n', v: 100 }, B2: { t: 'n', v: 10 }, D1: { t: 'n', v: 2 }, C2: { t: 'n', f: '(A2+B2)*$D$1', v: 220 },
+    A3: { t: 'n', v: 200 }, B3: { t: 'n', v: 20 }, C3: { t: 'n', v: 400 },
+    A4: { t: 'n', v: 300 }, B4: { t: 'n', v: 30 }, C4: { t: 'n', v: 600 },
+    '!ref': 'A1:D4',
+  });
+  assert.deepEqual(findings.map(finding => [finding.cell, finding.expectedValue]), [['C3', 440], ['C4', 660]]);
+});
+
+test('skips all-hardcoded result columns without workbook-defined calculation evidence', () => {
+  const findings = findFormulaDiscrepancies({
+    A1: { t: 's', v: 'Input A' }, B1: { t: 's', v: 'Input B' }, C1: { t: 's', v: 'Result' },
+    A2: { t: 'n', v: 100 }, B2: { t: 'n', v: 200 }, C2: { t: 'n', v: 999 },
+    A3: { t: 'n', v: 300 }, B3: { t: 'n', v: 400 }, C3: { t: 'n', v: 123 },
+    '!ref': 'A1:C3',
+  });
+  assert.deepEqual(findings, []);
+});
+
+test('skips hardcoded cells when formula rows use conflicting patterns', () => {
+  const findings = findFormulaDiscrepancies({
+    A2: { t: 'n', v: 10 }, B2: { t: 'n', v: 20 }, C2: { t: 'n', f: 'A2+B2', v: 30 },
+    A3: { t: 'n', v: 30 }, B3: { t: 'n', v: 10 }, C3: { t: 'n', f: 'A3-B3', v: 20 },
+    A4: { t: 'n', v: 50 }, B4: { t: 'n', v: 60 }, C4: { t: 'n', v: 999 },
+    '!ref': 'A1:C4',
+  });
+  assert.deepEqual(findings, []);
+});
+
+test('does not duplicate formula-cell discrepancies while inferring hardcoded rows', () => {
+  const findings = findFormulaDiscrepancies({
+    A2: { t: 'n', v: 10 }, B2: { t: 'n', v: 20 }, C2: { t: 'n', f: 'A2+B2', v: 29 },
+    A3: { t: 'n', v: 30 }, B3: { t: 'n', v: 40 }, C3: { t: 'n', v: 69 },
+    '!ref': 'A1:C3',
+  });
+  assert.deepEqual(findings.map(finding => finding.cell), ['C2', 'C3']);
+});
+
+test('all-hardcoded external fixture is skipped when it contains no calculation definition', {
+  skip: !process.env.TEST_PAYSLIP_FIXTURE,
+}, () => {
+  const parsed = parseExcelBuffer(readFileSync(process.env.TEST_PAYSLIP_FIXTURE!), 'Sheet1');
   assert.deepEqual(parsed.formulaDiscrepancies, []);
 });

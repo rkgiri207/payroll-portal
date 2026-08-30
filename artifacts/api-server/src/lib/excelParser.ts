@@ -2,6 +2,7 @@
  * Excel parsing utilities using SheetJS (xlsx)
  */
 import * as XLSX from 'xlsx';
+import { findFormulaDiscrepancies, type FormulaDiscrepancy } from './excelFormulaValidator';
 
 export interface ParsedSheet {
   sheets: string[];
@@ -9,6 +10,8 @@ export interface ParsedSheet {
   headers: string[];
   rowCount: number;
   rows: Record<string, unknown>[];
+  rowNumbers: number[];
+  formulaDiscrepancies: FormulaDiscrepancy[];
 }
 
 /**
@@ -53,6 +56,10 @@ export function parseExcelBuffer(
     defval: '',       // Default value for empty cells
     blankrows: false, // Skip completely empty rows
   });
+  const rowNumbers = rows.map((row, index) => {
+    const sourceRow = (row as Record<string, unknown> & { __rowNum__?: number }).__rowNum__;
+    return typeof sourceRow === 'number' ? sourceRow + 1 : index + 2;
+  });
 
   return {
     sheets,
@@ -60,6 +67,8 @@ export function parseExcelBuffer(
     headers,
     rowCount: rows.length,
     rows,
+    rowNumbers,
+    formulaDiscrepancies: findFormulaDiscrepancies(worksheet),
   };
 }
 

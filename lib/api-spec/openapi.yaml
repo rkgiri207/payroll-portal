@@ -1101,6 +1101,22 @@ components:
           type: array
           items:
             type: string
+        calculationWarnings:
+          type: array
+          items:
+            type: object
+            required: [cell, formula, excelValue, expectedValue, rowIndex]
+            properties:
+              cell:
+                type: string
+              formula:
+                type: string
+              excelValue:
+                type: number
+              expectedValue:
+                type: number
+              rowIndex:
+                type: number
 
     PayrollValidationSummary:
       type: object

@@ -150,11 +150,18 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
     let validMobileCount = 0;
     let missingMobileCount = 0;
     let invalidMobileCount = 0;
+    const formulaDiscrepanciesByRow = new Map<number, typeof parsed.formulaDiscrepancies>();
+    for (const discrepancy of parsed.formulaDiscrepancies) {
+      const findings = formulaDiscrepanciesByRow.get(discrepancy.rowIndex) ?? [];
+      findings.push(discrepancy);
+      formulaDiscrepanciesByRow.set(discrepancy.rowIndex, findings);
+    }
 
     const rows = parsed.rows.map((row, idx) => {
-      const rowIndex = idx + 2; // Excel row number (1-based header + 1)
+      const rowIndex = parsed.rowNumbers[idx] ?? idx + 2;
       const errors: string[] = [];
       const warnings: string[] = [];
+      const calculationWarnings = formulaDiscrepanciesByRow.get(rowIndex) ?? [];
 
       // ── Employee identity from Excel ────────────────────────────────────────
       const employeeCode = columnMapping.employeeId
@@ -235,6 +242,9 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
       if (netRaw !== undefined && netRaw !== '' && netSalary === null) {
         errors.push(`Invalid net salary value: "${netRaw}"`);
       }
+      for (const finding of calculationWarnings) {
+        warnings.push(`Cell ${finding.cell}: calculated value does not match the formula result.`);
+      }
 
       // Compute total deductions for preview display
       const pfEmployeeRaw  = columnMapping.pfEmployee  ? row[columnMapping.pfEmployee]  : undefined;
@@ -284,6 +294,7 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
         status,
         errors,
         warnings,
+        calculationWarnings,
       };
     });
 

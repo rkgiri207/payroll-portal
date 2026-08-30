@@ -497,6 +497,32 @@ export default function PayrollWizardPage() {
               </div>
             </div>
 
+            {validationResult.rows.some((row: any) => row.calculationWarnings?.length > 0) && (
+              <div className="space-y-2">
+                <p className="font-medium text-sm">Warnings</p>
+                {validationResult.rows.flatMap((row: any) =>
+                  (row.calculationWarnings ?? []).map((warning: any) => (
+                    <div
+                      key={`${row.rowIndex}-${warning.cell}`}
+                      className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-3 text-red-800 dark:border-red-900 dark:bg-red-950/20 dark:text-red-300"
+                    >
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                      <div className="min-w-0 text-xs">
+                        <p>
+                          Employee {row.employeeCode || `row ${row.rowIndex}`} — Cell {warning.cell}: calculated value does not match the formula result.
+                        </p>
+                        <p className="mt-1">Excel value: {formatINR(warning.excelValue)}</p>
+                        <p>
+                          Expected result:{' '}
+                          <span className="text-[15px] font-semibold">{formatINR(warning.expectedValue)}</span>
+                        </p>
+                      </div>
+                    </div>
+                  )),
+                )}
+              </div>
+            )}
+
             {/* WhatsApp Readiness Summary */}
             <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
               <p className="font-medium text-blue-800 dark:text-blue-200 text-sm mb-3">📱 WhatsApp Readiness</p>

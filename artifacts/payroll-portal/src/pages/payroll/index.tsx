@@ -402,7 +402,7 @@ export default function PayrollWizardPage() {
                         <SelectTrigger data-testid={`select-map-${field.key}`}>
                           <SelectValue placeholder="(Not mapped)" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-72">
                           <SelectItem value="none" className="text-muted-foreground italic">(Not mapped)</SelectItem>
                           {excelHeaders.map(h => (
                             <SelectItem key={h} value={h}>{h}</SelectItem>

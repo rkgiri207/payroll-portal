@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import * as XLSX from 'xlsx';
 import type { WorkSheet } from 'xlsx';
+import { parseExcelBuffer } from './excelParser';
 import { findFormulaDiscrepancies } from './excelFormulaValidator';
 
 function sheet(cells: WorkSheet): WorkSheet {
@@ -53,4 +55,48 @@ test('skips unsupported functions instead of reporting false discrepancies', () 
     D2: { t: 'n', f: 'MEDIAN(A2:C2)', v: 999 },
   }));
   assert.deepEqual(findings, []);
+});
+
+function serializedPayrollWorkbook(totalValue: number, doubledValue: number): Buffer {
+  const worksheet: WorkSheet = {
+    A1: { t: 's', v: 'Employee ID' },
+    B1: { t: 's', v: 'Employee Name' },
+    C1: { t: 's', v: 'Value 1' },
+    D1: { t: 's', v: 'Value 2' },
+    E1: { t: 's', v: 'Total' },
+    F1: { t: 's', v: 'Doubled' },
+    A2: { t: 's', v: 'TEST123' },
+    B2: { t: 's', v: 'Synthetic Employee' },
+    C2: { t: 'n', v: 100 },
+    D2: { t: 'n', v: 200 },
+    E2: { t: 'n', f: 'C2+D2', v: totalValue },
+    F2: { t: 'n', f: 'E2*2', v: doubledValue },
+    '!ref': 'A1:F2',
+  };
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Payroll');
+  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+}
+
+test('serialized workbook retains stale cached values through the production parser', () => {
+  const parsed = parseExcelBuffer(serializedPayrollWorkbook(250, 500), 'Payroll');
+  assert.equal(parsed.rows.length, 1);
+  assert.equal(parsed.rowNumbers[0], 2);
+  assert.deepEqual(
+    parsed.formulaDiscrepancies.map(finding => ({
+      cell: finding.cell,
+      excelValue: finding.excelValue,
+      expectedValue: finding.expectedValue,
+      rowIndex: finding.rowIndex,
+    })),
+    [
+      { cell: 'E2', excelValue: 250, expectedValue: 300, rowIndex: 2 },
+      { cell: 'F2', excelValue: 500, expectedValue: 600, rowIndex: 2 },
+    ],
+  );
+});
+
+test('serialized workbook with correct cached results produces no findings', () => {
+  const parsed = parseExcelBuffer(serializedPayrollWorkbook(300, 600), 'Payroll');
+  assert.deepEqual(parsed.formulaDiscrepancies, []);
 });

@@ -1,7 +1,7 @@
 export const SESSION_EXPIRED_EVENT = "payroll:session-expired";
 export const SESSION_STARTED_EVENT = "payroll:session-started";
 export const SESSION_ENDED_EVENT = "payroll:session-ended";
-export const SESSION_DURATION_MS = 60_000;
+export const SESSION_DURATION_MS = 300_000;
 
 const SESSION_DEADLINE_KEY = "payroll.sessionDeadline";
 const HEARTBEAT_THROTTLE_MS = 12_000;

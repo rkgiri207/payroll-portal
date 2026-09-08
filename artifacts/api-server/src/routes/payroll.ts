@@ -343,9 +343,6 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
     const [buffer] = await file.download();
     const parsed = parseExcelBuffer(buffer, sheetName);
 
-    // Known mapped column names — used to detect additional/unmapped columns
-    const knownMappedCols = new Set(Object.values(columnMapping).filter(Boolean));
-
     // Build insert data for each row
     const recordsToInsert: Array<{
       employeeCode: string;
@@ -439,18 +436,10 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
       const otherDeductions = get(columnMapping.otherDeductions);
       const netSalary      = get(columnMapping.netSalary);
 
-      // ── Additional/unmapped columns → additionalComponents JSONB ────────
+      // Only the explicitly mapped additional earning belongs on the payslip.
       const additionalComponents: Record<string, string> = {};
       if (columnMapping.additionalEarnings && additionalEarnings !== null) {
         additionalComponents[columnMapping.additionalEarnings] = additionalEarnings;
-      }
-      for (const [colName, value] of Object.entries(row)) {
-        if (!knownMappedCols.has(colName)) {
-          const normalized = normalizeSalaryValue(value);
-          if (normalized !== null) {
-            additionalComponents[colName] = normalized;
-          }
-        }
       }
 
       // Running totals

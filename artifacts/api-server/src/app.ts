@@ -68,7 +68,7 @@ app.use(
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60_000, // 1 minute
+      maxAge: 300_000, // 5 minutes of inactivity
     },
   }),
 );

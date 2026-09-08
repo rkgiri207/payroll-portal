@@ -47,8 +47,8 @@ export const payrollRecordsTable = pgTable("payroll_records", {
   // Net — imported from Excel
   netSalary: numeric("net_salary", { precision: 12, scale: 2 }),
 
-  // Additional/unmapped Excel columns preserved for Stage 3 payslip generation
-  // e.g. { "Conveyance": "1500.00", "Medical Allowance": "500.00" }
+  // Explicitly mapped additional earning preserved with its Excel column label.
+  // e.g. { "Annual Leave Encashment": "1500.00" }
   additionalComponents: jsonb("additional_components").$type<Record<string, string>>(),
 
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

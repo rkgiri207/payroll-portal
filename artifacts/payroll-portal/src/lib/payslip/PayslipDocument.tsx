@@ -105,10 +105,7 @@ function buildRows(record: PayslipRecord) {
   if (record.basic !== null && record.basic !== undefined)        earnings.push({ label: 'Basic', amount: record.basic });
   if (record.da !== null && record.da !== undefined)              earnings.push({ label: 'DA', amount: record.da });
   if (record.hra !== null && record.hra !== undefined)            earnings.push({ label: 'HRA', amount: record.hra });
-  if (record.otherEarnings !== null && record.otherEarnings !== undefined)
-    earnings.push({ label: 'Other Earnings', amount: record.otherEarnings });
-
-  // Additional components (unmapped Excel columns — shown as earnings by default)
+  // Explicitly mapped additional earning components remain part of earnings.
   if (record.additionalComponents) {
     for (const [key, value] of Object.entries(record.additionalComponents)) {
       if (value !== null && value !== undefined) {
@@ -219,6 +216,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#eff6ff',
   },
   netLabel: { fontSize: 9, color: ACCENT, fontWeight: 'bold', letterSpacing: 0.5, marginBottom: 4 },
+  postNetEarning: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    borderBottomWidth: 0.5,
+    borderBottomColor: BORDER,
+    paddingBottom: 6,
+    marginBottom: 7,
+  },
+  postNetEarningLabel: { fontSize: 8.5, color: TEXT_MID },
+  postNetEarningAmount: { fontSize: 8.5, color: TEXT_DARK, fontWeight: 'bold' },
   netAmount: { fontSize: 18, fontWeight: 'bold', color: BRAND, marginBottom: 4 },
   netWords: { fontSize: 8, color: TEXT_MID, textAlign: 'center', fontStyle: 'italic' },
 
@@ -353,6 +361,12 @@ export function PayslipDocument({ record, run, company }: Props) {
 
         {/* ── NET SALARY ── */}
         <View style={styles.netBox}>
+          {hasValue(record.otherEarnings) ? (
+            <View style={styles.postNetEarning}>
+              <Text style={styles.postNetEarningLabel}>OTHER EARNINGS (ADDED AFTER NET PAY)</Text>
+              <Text style={styles.postNetEarningAmount}>+ {formatINRAmount(record.otherEarnings)}</Text>
+            </View>
+          ) : null}
           <Text style={styles.netLabel}>NET SALARY</Text>
           <Text style={styles.netAmount}>{formatINRAmount(record.netSalary)}</Text>
           <Text style={styles.netWords}>{amountInWords(record.netSalary)}</Text>

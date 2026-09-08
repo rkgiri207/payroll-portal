@@ -358,6 +358,7 @@ export interface PayrollRun {
   uploadedByName?: string | null;
   uploadTimestamp?: string;
   employeeCount: number;
+  branchNames?: string[];
   totalGross: string;
   totalDeductions: string;
   totalNet: string;

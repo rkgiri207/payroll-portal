@@ -14,7 +14,7 @@ import {
   payslipSharesTable,
   usersTable,
 } from '@workspace/db/schema';
-import { eq, desc, count, and, sql } from 'drizzle-orm';
+import { eq, desc, count, and, inArray, sql } from 'drizzle-orm';
 import { requireAuth } from '../middlewares/requireAuth';
 import { createAuditLog } from '../lib/audit';
 import { ObjectStorageService, STORAGE_BUCKETS } from '../lib/objectStorage';
@@ -63,7 +63,33 @@ router.get('/payroll-runs', requireAuth, async (req: Request, res: Response) => 
     db.select({ total: count() }).from(payrollRunsTable).where(where),
   ]);
 
-  res.json({ runs, total: Number(total), page, limit });
+  const branchRows = runs.length > 0
+    ? await db
+        .select({
+          payrollRunId: payrollRecordsTable.payrollRunId,
+          branch: payrollRecordsTable.branch,
+        })
+        .from(payrollRecordsTable)
+        .where(inArray(payrollRecordsTable.payrollRunId, runs.map(run => run.id)))
+    : [];
+  const branchesByRun = new Map<number, Set<string>>();
+  for (const row of branchRows) {
+    const branch = row.branch?.trim();
+    if (!branch) continue;
+    const branches = branchesByRun.get(row.payrollRunId) ?? new Set<string>();
+    branches.add(branch);
+    branchesByRun.set(row.payrollRunId, branches);
+  }
+
+  res.json({
+    runs: runs.map(run => ({
+      ...run,
+      branchNames: [...(branchesByRun.get(run.id) ?? [])].sort((a, b) => a.localeCompare(b)),
+    })),
+    total: Number(total),
+    page,
+    limit,
+  });
 });
 
 // ─── Get payroll run detail ───────────────────────────────────────────────────

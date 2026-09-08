@@ -1244,6 +1244,10 @@ components:
           type: string
         employeeCount:
           type: number
+        branchNames:
+          type: array
+          items:
+            type: string
         totalGross:
           type: string
         totalDeductions:

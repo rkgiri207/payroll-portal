@@ -100,16 +100,25 @@ const hasValue = (v: string | null | undefined): v is string =>
 function buildRows(record: PayslipRecord) {
   const earnings: Array<{ label: string; amount: string }> = [];
   const deductions: Array<{ label: string; amount: string }> = [];
+  const postNetEarnings: Array<{ label: string; amount: string }> = [];
 
   // Standard earnings (only if value exists in record)
   if (record.basic !== null && record.basic !== undefined)        earnings.push({ label: 'Basic', amount: record.basic });
   if (record.da !== null && record.da !== undefined)              earnings.push({ label: 'DA', amount: record.da });
   if (record.hra !== null && record.hra !== undefined)            earnings.push({ label: 'HRA', amount: record.hra });
-  // Explicitly mapped additional earning components remain part of earnings.
+  if (hasValue(record.otherEarnings)) {
+    postNetEarnings.push({ label: 'Other Earnings', amount: record.otherEarnings });
+  }
+
+  // Explicitly mapped additional earnings are added after regular net pay.
   if (record.additionalComponents) {
     for (const [key, value] of Object.entries(record.additionalComponents)) {
-      if (value !== null && value !== undefined) {
-        earnings.push({ label: toLabel(key), amount: value });
+      if (hasValue(value)) {
+        const component = { label: toLabel(key), amount: value };
+        const duplicate = postNetEarnings.some(
+          item => item.label.toLowerCase() === component.label.toLowerCase() && item.amount === component.amount,
+        );
+        if (!duplicate) postNetEarnings.push(component);
       }
     }
   }
@@ -129,7 +138,7 @@ function buildRows(record: PayslipRecord) {
   while (earnings.length < maxLen)   earnings.push({ label: '', amount: '' });
   while (deductions.length < maxLen) deductions.push({ label: '', amount: '' });
 
-  return { earnings, deductions };
+  return { earnings, deductions, postNetEarnings };
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -244,7 +253,7 @@ interface Props {
 
 export function PayslipDocument({ record, run, company }: Props) {
   const monthYear = `${MONTH_NAMES[run.payrollMonth - 1]} ${run.payrollYear}`;
-  const { earnings, deductions } = buildRows(record);
+  const { earnings, deductions, postNetEarnings } = buildRows(record);
   const maxRows = earnings.length;
 
   const subLineParts = [company.phone, company.email, company.website].filter(Boolean);
@@ -361,12 +370,12 @@ export function PayslipDocument({ record, run, company }: Props) {
 
         {/* ── NET SALARY ── */}
         <View style={styles.netBox}>
-          {hasValue(record.otherEarnings) ? (
-            <View style={styles.postNetEarning}>
-              <Text style={styles.postNetEarningLabel}>OTHER EARNINGS (ADDED AFTER NET PAY)</Text>
-              <Text style={styles.postNetEarningAmount}>+ {formatINRAmount(record.otherEarnings)}</Text>
+          {postNetEarnings.map(item => (
+            <View key={item.label} style={styles.postNetEarning}>
+              <Text style={styles.postNetEarningLabel}>{item.label.toUpperCase()} (ADDED AFTER NET PAY)</Text>
+              <Text style={styles.postNetEarningAmount}>+ {formatINRAmount(item.amount)}</Text>
             </View>
-          ) : null}
+          ))}
           <Text style={styles.netLabel}>NET SALARY</Text>
           <Text style={styles.netAmount}>{formatINRAmount(record.netSalary)}</Text>
           <Text style={styles.netWords}>{amountInWords(record.netSalary)}</Text>

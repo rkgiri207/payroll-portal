@@ -526,7 +526,9 @@ export default function PayslipsPage() {
               {activeRuns.map(r => (
                 <SelectItem key={r.id} value={r.id.toString()}>
                   <span className="mr-2 text-xs text-muted-foreground">{formatDateTime(r.uploadTimestamp ?? r.createdAt)}</span>
-                  {monthName(r.payrollMonth)} {r.payrollYear} — {r.employeeCount} employees
+                  {monthName(r.payrollMonth)} {r.payrollYear}
+                  {r.branchNames?.length ? ` — ${r.branchNames.join(', ')}` : ''}
+                  {' — '}{r.employeeCount} employees
                 </SelectItem>
               ))}
             </SelectContent>

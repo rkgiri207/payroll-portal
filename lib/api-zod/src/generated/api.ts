@@ -609,6 +609,7 @@ export const ListPayrollRunsResponse = zod.object({
   "uploadedByName": zod.string().nullish(),
   "uploadTimestamp": zod.string().optional(),
   "employeeCount": zod.number(),
+  "branchNames": zod.array(zod.string()).optional(),
   "totalGross": zod.string(),
   "totalDeductions": zod.string(),
   "totalNet": zod.string(),

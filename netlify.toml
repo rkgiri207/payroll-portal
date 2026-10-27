@@ -1,5 +1,29 @@
+[build]
+  command = "corepack pnpm --filter @workspace/payroll-portal build"
+  publish = "artifacts/payroll-portal/dist"
+
 [functions]
   directory = "artifacts/api-server/netlify/functions"
   node_bundler = "esbuild"
-  external_node_modules = ["connect-pg-simple", "express", "pino", "pino-http", "serverless-http"]
   included_files = ["artifacts/payroll-portal/public/fonts/*.ttf"]
+
+# Keep the existing browser and public-payslip URLs unchanged.  These are
+# rewrites, not redirects, so Express receives its original /api or /p path.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/p/*"
+  to = "/.netlify/functions/api/p/:splat"
+  status = 200
+  force = true
+
+# Vite is a client-side application.  Leave API and public payslip paths above
+# this rule so deep links render the application without intercepting them.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

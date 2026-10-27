@@ -7,7 +7,8 @@
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "corepack pnpm --filter @workspace/scripts exec tsx --test ../artifacts/api-server/src/netlify-routing.test.ts ../artifacts/api-server/src/lib/excelFormulaValidator.test.ts ../artifacts/api-server/src/lib/payrollWhatsAppClient.test.ts"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",
@@ -35,6 +36,7 @@
     "@types/express": "^5.0.6",
     "@types/express-session": "^1.19.0",
     "@types/node": "catalog:",
+    "@types/react": "catalog:",
     "esbuild": "0.27.3",
     "esbuild-plugin-pino": "^2.3.3",
     "pino-pretty": "^13.1.3",

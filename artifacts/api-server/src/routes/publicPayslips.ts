@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@workspace/db';
 import { payrollRecordsTable } from '@workspace/db/schema';
 import { ObjectNotFoundError, STORAGE_BUCKETS } from '../lib/objectStorage';
+import { summarizePdf } from '../lib/pdfDiagnostics';
 import {
   cleanupExpiredPayslipShares,
   findPayslipShare,
@@ -34,13 +35,7 @@ router.get('/p/:token', async (req: Request, res: Response) => {
     const file = await payslipStorage.getObjectEntityFile(share.storagePath, STORAGE_BUCKETS.payslips);
     const [buffer] = await file.download();
 
-req.log.info(
-  {
-    pdfBytes: buffer.length,
-    validPdfHeader: buffer.subarray(0, 5).toString('ascii') === '%PDF-',
-  },
-  'Shared payslip PDF retrieved',
-);
+    req.log.info({ pdfSummary: summarizePdf(buffer) }, 'Shared payslip PDF retrieved');
 
 await recordShareAccess(share.id);
     const safeCode = (record?.employeeCode ?? 'employee').replace(/[^A-Za-z0-9_-]/g, '_');

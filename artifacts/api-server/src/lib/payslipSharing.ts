@@ -18,6 +18,8 @@ import {
   registerPayslipFonts,
 } from '../../../payroll-portal/src/lib/payslip/PayslipDocument';
 import { ObjectNotFoundError, ObjectStorageService, STORAGE_BUCKETS } from './objectStorage';
+import { logger } from './logger';
+import { summarizePdf } from './pdfDiagnostics';
 
 const SHARE_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
 const storage = new ObjectStorageService();
@@ -105,8 +107,10 @@ async function renderPayslip(payrollRecordId: number): Promise<{ buffer: Buffer;
       logoDataUrl: await logoDataUrl(company.logoPath),
     },
   });
+  const buffer = await renderToBuffer(document as React.ReactElement<any>);
+  logger.info({ pdfSummary: summarizePdf(buffer) }, 'Shared payslip PDF rendered');
   return {
-    buffer: await renderToBuffer(document as React.ReactElement<any>),
+    buffer,
     filename: payslipFilename(row.record, run),
     runId: row.run.id,
   };

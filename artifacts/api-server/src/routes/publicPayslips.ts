@@ -33,7 +33,16 @@ router.get('/p/:token', async (req: Request, res: Response) => {
       .from(payrollRecordsTable).where(eq(payrollRecordsTable.id, share.payrollRecordId));
     const file = await payslipStorage.getObjectEntityFile(share.storagePath, STORAGE_BUCKETS.payslips);
     const [buffer] = await file.download();
-    await recordShareAccess(share.id);
+
+req.log.info(
+  {
+    pdfBytes: buffer.length,
+    validPdfHeader: buffer.subarray(0, 5).toString('ascii') === '%PDF-',
+  },
+  'Shared payslip PDF retrieved',
+);
+
+await recordShareAccess(share.id);
     const safeCode = (record?.employeeCode ?? 'employee').replace(/[^A-Za-z0-9_-]/g, '_');
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="Payslip_${safeCode}.pdf"`);

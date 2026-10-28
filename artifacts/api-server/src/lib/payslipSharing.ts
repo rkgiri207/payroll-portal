@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID }
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import React from 'react';
-import { renderToBuffer } from '@react-pdf/renderer';
+import { Font, renderToBuffer } from '@react-pdf/renderer';
 import { and, eq, lte, or } from 'drizzle-orm';
 import { db } from '@workspace/db';
 import {
@@ -15,7 +15,6 @@ import {
 import {
   PayslipDocument,
   payslipFilename,
-  registerPayslipFonts,
 } from '../../../payroll-portal/src/lib/payslip/PayslipDocument';
 import { ObjectNotFoundError, ObjectStorageService, STORAGE_BUCKETS } from './objectStorage';
 import { logger } from './logger';
@@ -23,6 +22,7 @@ import { summarizePdf } from './pdfDiagnostics';
 
 const SHARE_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
 const storage = new ObjectStorageService();
+let serverFontsRegistered = false;
 
 function payslipFontPath(filename: string): string {
   const candidates = [
@@ -32,6 +32,22 @@ function payslipFontPath(filename: string): string {
   const fontPath = candidates.find(candidate => existsSync(candidate));
   if (!fontPath) throw new Error(`Payslip font is missing from the deployment: ${filename}`);
   return fontPath;
+}
+
+function registerServerPayslipFonts(): void {
+  if (serverFontsRegistered) return;
+  const regular = payslipFontPath('NotoSans-Regular.ttf');
+  const bold = payslipFontPath('NotoSans-Bold.ttf');
+  Font.register({
+    family: 'NotoSans',
+    fonts: [
+      { src: regular, fontWeight: 'normal', fontStyle: 'normal' },
+      { src: regular, fontWeight: 'normal', fontStyle: 'italic' },
+      { src: bold, fontWeight: 'bold', fontStyle: 'normal' },
+      { src: bold, fontWeight: 'bold', fontStyle: 'italic' },
+    ],
+  });
+  serverFontsRegistered = true;
 }
 
 function sessionSecret(): string {
@@ -90,10 +106,7 @@ async function renderPayslip(payrollRecordId: number): Promise<{ buffer: Buffer;
   const [company] = await db.select().from(companySettingsTable).limit(1);
   if (!company) throw new Error('Company settings are required before sharing a payslip');
 
-  registerPayslipFonts(
-    payslipFontPath('NotoSans-Regular.ttf'),
-    payslipFontPath('NotoSans-Bold.ttf'),
-  );
+  registerServerPayslipFonts();
   const run = { payrollMonth: row.run.payrollMonth, payrollYear: row.run.payrollYear };
   const document = React.createElement(PayslipDocument, {
     record: row.record,

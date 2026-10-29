@@ -99,6 +99,12 @@ interface WhatsAppBatchResult {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const API_BASE = '/api';
+const SEND_ONE_AT_A_TIME = 1;
+const PAUSE_BETWEEN_SENDS_MS = 1500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 async function fetchLogoDataUrl(): Promise<string | null> {
   try {
@@ -405,9 +411,10 @@ export default function PayslipsPage() {
     try {
       const requestId = crypto.randomUUID();
       const combined: WhatsAppBatchResult = { batchId: requestId, total: ids.length, sent: 0, failed: 0, pending: 0, skipped: 0, results: [] };
-      for (let offset = 0; offset < ids.length; offset += 10) {
+      for (let offset = 0; offset < ids.length; offset += SEND_ONE_AT_A_TIME) {
+        if (offset > 0) await sleep(PAUSE_BETWEEN_SENDS_MS);
         const result = await postWhatsAppBatch<WhatsAppBatchResult>('send', {
-          recordIds: ids.slice(offset, offset + 10),
+          recordIds: ids.slice(offset, offset + SEND_ONE_AT_A_TIME),
           requestId,
           override: whatsAppBatchOverride,
         });
@@ -416,7 +423,7 @@ export default function PayslipsPage() {
         combined.pending += result.pending;
         combined.skipped += result.skipped;
         combined.results.push(...result.results);
-        setWhatsAppBatchProcessed(Math.min(offset + 10, ids.length));
+        setWhatsAppBatchProcessed(Math.min(offset + SEND_ONE_AT_A_TIME, ids.length));
         if (selectedRunId) setStatuses(await fetchPayslipStatuses(selectedRunId));
       }
       setWhatsAppBatchResult(combined);

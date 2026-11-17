@@ -110,11 +110,19 @@ function buildRows(record: PayslipRecord) {
     postNetEarnings.push({ label: 'Other Earnings', amount: record.otherEarnings });
   }
 
-  // Explicitly mapped additional earnings are added after regular net pay.
+  // Travel Allowance is an earning shown directly after HRA; other mapped
+  // additional earnings remain in the post-net section.
   if (record.additionalComponents) {
     for (const [key, value] of Object.entries(record.additionalComponents)) {
       if (hasValue(value)) {
         const component = { label: toLabel(key), amount: value };
+        if (component.label.toLowerCase() === 'travel allowance') {
+          const duplicate = earnings.some(
+            item => item.label.toLowerCase() === component.label.toLowerCase() && item.amount === component.amount,
+          );
+          if (!duplicate) earnings.push(component);
+          continue;
+        }
         const duplicate = postNetEarnings.some(
           item => item.label.toLowerCase() === component.label.toLowerCase() && item.amount === component.amount,
         );

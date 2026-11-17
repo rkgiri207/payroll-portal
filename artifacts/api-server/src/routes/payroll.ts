@@ -424,6 +424,7 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
       const basic          = get(columnMapping.basic);
       const da             = get(columnMapping.da);
       const hra            = get(columnMapping.hra);
+      const travelAllowance = get(columnMapping.travelAllowance);
       const otherEarnings  = get(columnMapping.otherEarnings);
       const additionalEarnings = get(columnMapping.additionalEarnings);
       const grossSalary    = get(columnMapping.grossSalary);
@@ -440,6 +441,9 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
       const additionalComponents: Record<string, string> = {};
       if (columnMapping.additionalEarnings && additionalEarnings !== null) {
         additionalComponents[columnMapping.additionalEarnings] = additionalEarnings;
+      }
+      if (columnMapping.travelAllowance && travelAllowance !== null) {
+        additionalComponents[columnMapping.travelAllowance] = travelAllowance;
       }
 
       // Running totals

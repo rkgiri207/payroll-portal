@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { employeeDeductionMismatchWarning, sumEmployeeDeductions } from './payrollDeductions';
 
-test('excludes employer PF and ESI from employee deduction totals', () => {
+test('includes employer PF and ESI in workbook deduction totals', () => {
   const total = sumEmployeeDeductions({
     pfEmployee: '1800.00',
     pfEmployer: '1800.00',
@@ -13,7 +13,7 @@ test('excludes employer PF and ESI from employee deduction totals', () => {
     otherDeductions: '25.00',
   });
 
-  assert.equal(total, '2225.00');
+  assert.equal(total, '4675.00');
 });
 
 test('treats missing employee deductions as zero', () => {
@@ -23,7 +23,7 @@ test('treats missing employee deductions as zero', () => {
 test('warns when the mapped Excel deduction total differs from employee deductions', () => {
   assert.match(
     employeeDeductionMismatchWarning('540.00', '150.00') ?? '',
-    /Employer PF\/ESI are excluded/,
+    /do not match mapped deductions/,
   );
   assert.equal(employeeDeductionMismatchWarning('150.00', '150.00'), null);
   assert.equal(employeeDeductionMismatchWarning(null, '150.00'), null);

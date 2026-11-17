@@ -11,13 +11,15 @@ export type EmployeeDeductionAmounts = {
 };
 
 /**
- * Employer PF and ESI are employer costs, not deductions from an employee's
- * pay. Keep them out of all employee-deduction totals.
+ * The workbook includes employer PF and ESI in total deductions and subtracts
+ * them from net pay, so they are included here.
  */
 export function sumEmployeeDeductions(amounts: EmployeeDeductionAmounts): string {
   return [
     amounts.pfEmployee,
     amounts.esiEmployee,
+    amounts.pfEmployer,
+    amounts.esiEmployer,
     amounts.pt,
     amounts.lop,
     amounts.otherDeductions,
@@ -30,5 +32,5 @@ export function employeeDeductionMismatchWarning(
 ): string | null {
   if (reportedTotal === null || reportedTotal === calculatedTotal) return null;
 
-  return `Excel total deductions (${reportedTotal}) do not match mapped employee deductions (${calculatedTotal}). Employer PF/ESI are excluded from employee deductions.`;
+  return `Excel total deductions (${reportedTotal}) do not match mapped deductions (${calculatedTotal}).`;
 }

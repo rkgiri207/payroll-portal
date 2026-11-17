@@ -405,6 +405,7 @@ export const ValidatePayrollBody = zod.object({
   "pt": zod.string().optional(),
   "lop": zod.string().optional(),
   "otherDeductions": zod.string().optional(),
+  "totalDeductions": zod.string().optional(),
   "netSalary": zod.string().optional()
 }),
   "payrollMonth": zod.number().min(1).max(validatePayrollBodyPayrollMonthMax),
@@ -480,6 +481,7 @@ export const ImportPayrollBody = zod.object({
   "pt": zod.string().optional(),
   "lop": zod.string().optional(),
   "otherDeductions": zod.string().optional(),
+  "totalDeductions": zod.string().optional(),
   "netSalary": zod.string().optional()
 }),
   "payrollMonth": zod.number().min(1).max(importPayrollBodyPayrollMonthMax),
@@ -521,6 +523,7 @@ export const GetColumnMappingResponse = zod.object({
   "pt": zod.string().optional(),
   "lop": zod.string().optional(),
   "otherDeductions": zod.string().optional(),
+  "totalDeductions": zod.string().optional(),
   "netSalary": zod.string().optional()
 }),zod.null()])
 })
@@ -551,6 +554,7 @@ export const SaveColumnMappingBody = zod.object({
   "pt": zod.string().optional(),
   "lop": zod.string().optional(),
   "otherDeductions": zod.string().optional(),
+  "totalDeductions": zod.string().optional(),
   "netSalary": zod.string().optional()
 })
 })
@@ -577,6 +581,7 @@ export const SaveColumnMappingResponse = zod.object({
   "pt": zod.string().optional(),
   "lop": zod.string().optional(),
   "otherDeductions": zod.string().optional(),
+  "totalDeductions": zod.string().optional(),
   "netSalary": zod.string().optional()
 }),zod.null()])
 })

@@ -97,9 +97,10 @@ const hasValue = (v: string | null | undefined): v is string =>
   v !== null && v !== undefined && v.trim() !== '' && v.trim() !== '0' && v.trim() !== '0.00';
 
 // ── Build earnings/deductions rows ────────────────────────────────────────────
-function buildRows(record: PayslipRecord) {
+export function buildPayslipRows(record: PayslipRecord) {
   const earnings: Array<{ label: string; amount: string }> = [];
   const deductions: Array<{ label: string; amount: string }> = [];
+  const employerContributions: Array<{ label: string; amount: string }> = [];
   const postNetEarnings: Array<{ label: string; amount: string }> = [];
 
   // Standard earnings (only if value exists in record)
@@ -123,22 +124,38 @@ function buildRows(record: PayslipRecord) {
     }
   }
 
-  // Standard deductions
+  // Employee deductions reduce take-home pay.
   if (record.pfEmployee != null)  deductions.push({ label: 'PF - Employee (12%)',       amount: record.pfEmployee });
-  if (record.pfEmployer != null)  deductions.push({ label: 'PF - Employer (12%)',         amount: record.pfEmployer });
   if (record.esiEmployee != null) deductions.push({ label: 'ESI - Employee (0.75%)',     amount: record.esiEmployee });
-  if (record.esiEmployer != null) deductions.push({ label: 'ESI - Employer (3.25%)',     amount: record.esiEmployer });
   if (record.pt != null)          deductions.push({ label: 'PT',                         amount: record.pt });
   if (record.lop != null)         deductions.push({ label: 'LOP',                        amount: record.lop });
   if (record.otherDeductions !== null && record.otherDeductions !== undefined)
     deductions.push({ label: 'Other Deductions', amount: record.otherDeductions });
+
+  // Employer contributions are displayed for transparency but never reduce net pay.
+  if (record.pfEmployer != null)  employerContributions.push({ label: 'PF - Employer (12%)', amount: record.pfEmployer });
+  if (record.esiEmployer != null) employerContributions.push({ label: 'ESI - Employer (3.25%)', amount: record.esiEmployer });
 
   // Pad the shorter side so rows align
   const maxLen = Math.max(earnings.length, deductions.length);
   while (earnings.length < maxLen)   earnings.push({ label: '', amount: '' });
   while (deductions.length < maxLen) deductions.push({ label: '', amount: '' });
 
-  return { earnings, deductions, postNetEarnings };
+  return { earnings, deductions, employerContributions, postNetEarnings };
+}
+
+export function employeeDeductionTotal(record: PayslipRecord): string {
+  return [record.pfEmployee, record.esiEmployee, record.pt, record.lop, record.otherDeductions]
+    .filter((value): value is string => value !== null && value !== undefined)
+    .reduce((sum, value) => sum + parseFloat(value || '0'), 0)
+    .toFixed(2);
+}
+
+function employerContributionTotal(record: PayslipRecord): string {
+  return [record.pfEmployer, record.esiEmployer]
+    .filter((value): value is string => value !== null && value !== undefined)
+    .reduce((sum, value) => sum + parseFloat(value || '0'), 0)
+    .toFixed(2);
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -214,6 +231,13 @@ const styles = StyleSheet.create({
   tableCellText:   { fontSize: 8.5, color: TEXT_MID },
   tableTotalText:  { fontSize: 8.5, fontWeight: 'bold', color: TEXT_DARK },
 
+  employerBox: { border: 1, borderColor: BORDER, borderRadius: 3, marginBottom: 12, padding: 8, backgroundColor: '#f9fafb' },
+  employerHeading: { fontSize: 8.5, fontWeight: 'bold', color: BRAND, marginBottom: 5 },
+  employerRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 2 },
+  employerLabel: { fontSize: 8, color: TEXT_MID },
+  employerAmount: { fontSize: 8, color: TEXT_DARK },
+  employerTotal: { borderTopWidth: 0.5, borderTopColor: BORDER, marginTop: 4, paddingTop: 4, flexDirection: 'row', justifyContent: 'space-between' },
+
   // ── Net salary ──
   netBox: {
     border: 1.5,
@@ -253,7 +277,7 @@ interface Props {
 
 export function PayslipDocument({ record, run, company }: Props) {
   const monthYear = `${MONTH_NAMES[run.payrollMonth - 1]} ${run.payrollYear}`;
-  const { earnings, deductions, postNetEarnings } = buildRows(record);
+  const { earnings, deductions, employerContributions, postNetEarnings } = buildPayslipRows(record);
   const maxRows = earnings.length;
 
   const subLineParts = [company.phone, company.email, company.website].filter(Boolean);
@@ -355,18 +379,28 @@ export function PayslipDocument({ record, run, company }: Props) {
             <View style={styles.cellSep} />
             <View style={styles.cellDedLabel}><Text style={styles.tableTotalText}>TOTAL DEDUCTIONS</Text></View>
             <View style={styles.cellDedAmt}>
-              {/* Sum all deduction columns */}
               <Text style={styles.tableTotalText}>
-                {formatINRAmount(
-                  [record.pfEmployee, record.pfEmployer, record.esiEmployee, record.esiEmployer, record.pt, record.lop, record.otherDeductions]
-                    .filter((v): v is string => v !== null && v !== undefined)
-                    .reduce((sum, v) => sum + parseFloat(v || '0'), 0)
-                    .toFixed(2)
-                )}
+                {formatINRAmount(employeeDeductionTotal(record))}
               </Text>
             </View>
           </View>
         </View>
+
+        {employerContributions.length > 0 ? (
+          <View style={styles.employerBox}>
+            <Text style={styles.employerHeading}>EMPLOYER CONTRIBUTIONS (NOT DEDUCTED FROM NET SALARY)</Text>
+            {employerContributions.map(item => (
+              <View key={item.label} style={styles.employerRow}>
+                <Text style={styles.employerLabel}>{item.label}</Text>
+                <Text style={styles.employerAmount}>{formatINRAmount(item.amount)}</Text>
+              </View>
+            ))}
+            <View style={styles.employerTotal}>
+              <Text style={styles.tableTotalText}>TOTAL EMPLOYER CONTRIBUTIONS</Text>
+              <Text style={styles.tableTotalText}>{formatINRAmount(employerContributionTotal(record))}</Text>
+            </View>
+          </View>
+        ) : null}
 
         {/* ── NET SALARY ── */}
         <View style={styles.netBox}>

@@ -19,6 +19,7 @@ import { requireAuth } from '../middlewares/requireAuth';
 import { createAuditLog } from '../lib/audit';
 import { ObjectStorageService, STORAGE_BUCKETS } from '../lib/objectStorage';
 import { parseExcelBuffer, normalizeSalaryValue, addDecimals } from '../lib/excelParser';
+import { employeeDeductionMismatchWarning, sumEmployeeDeductions } from '../lib/payrollDeductions';
 import { validateIndianMobile } from '../lib/mobileValidator';
 
 const router: IRouter = Router();
@@ -254,6 +255,7 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
       const ptRaw          = columnMapping.pt           ? row[columnMapping.pt]           : undefined;
       const lopRaw         = columnMapping.lop          ? row[columnMapping.lop]          : undefined;
       const otherDedRaw    = columnMapping.otherDeductions ? row[columnMapping.otherDeductions] : undefined;
+      const reportedTotalDedRaw = columnMapping.totalDeductions ? row[columnMapping.totalDeductions] : undefined;
       const pfEmployee  = normalizeSalaryValue(pfEmployeeRaw);
       const pfEmployer  = normalizeSalaryValue(pfEmployerRaw);
       const esiEmployee = normalizeSalaryValue(esiEmployeeRaw);
@@ -261,8 +263,19 @@ router.post('/payroll/validate', requireAuth, async (req: Request, res: Response
       const pt          = normalizeSalaryValue(ptRaw);
       const lop         = normalizeSalaryValue(lopRaw);
       const otherDed    = normalizeSalaryValue(otherDedRaw);
-      const totalDed = [pfEmployee, pfEmployer, esiEmployee, esiEmployer, pt, lop, otherDed]
-        .reduce<string>((acc, v) => addDecimals(acc, v), '0.00');
+      const reportedTotalDed = normalizeSalaryValue(reportedTotalDedRaw);
+      const totalDed = sumEmployeeDeductions({
+        pfEmployee,
+        esiEmployee,
+        pt,
+        lop,
+        otherDeductions: otherDed,
+      });
+      if (reportedTotalDedRaw !== undefined && reportedTotalDedRaw !== '' && reportedTotalDed === null) {
+        warnings.push(`Invalid total deductions value: "${reportedTotalDedRaw}"`);
+      }
+      const totalDeductionWarning = employeeDeductionMismatchWarning(reportedTotalDed, totalDed);
+      if (totalDeductionWarning) warnings.push(totalDeductionWarning);
 
       // Running totals (valid values only)
       if (grossSalary) totalGross       = addDecimals(totalGross, grossSalary);
@@ -445,8 +458,13 @@ router.post('/payroll/import', requireAuth, async (req: Request, res: Response) 
       // Running totals
       if (grossSalary)  totalGross = addDecimals(totalGross, grossSalary);
       if (netSalary)    totalNet   = addDecimals(totalNet, netSalary);
-      const rowDed = [pfEmployee, pfEmployer, esiEmployee, esiEmployer, pt, lop, otherDeductions]
-        .reduce<string>((acc, v) => addDecimals(acc, v), '0.00');
+      const rowDed = sumEmployeeDeductions({
+        pfEmployee,
+        esiEmployee,
+        pt,
+        lop,
+        otherDeductions,
+      });
       if (rowDed !== '0.00') totalDeductions = addDecimals(totalDeductions, rowDed);
 
       recordsToInsert.push({

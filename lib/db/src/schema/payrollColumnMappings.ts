@@ -20,11 +20,14 @@ export const columnMappingSchema = z.object({
   otherEarnings: z.string().optional(),
   additionalEarnings: z.string().optional(),
   grossSalary: z.string().optional(),
-  pf: z.string().optional(),
-  esi: z.string().optional(),
-  tds: z.string().optional(),
+  pfEmployee: z.string().optional(),
+  pfEmployer: z.string().optional(),
+  esiEmployee: z.string().optional(),
+  esiEmployer: z.string().optional(),
+  pt: z.string().optional(),
   lop: z.string().optional(),
   otherDeductions: z.string().optional(),
+  totalDeductions: z.string().optional(),
   netSalary: z.string().optional(),
 });
 

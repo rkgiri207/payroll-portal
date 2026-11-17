@@ -11,6 +11,7 @@ import {
   getListPayrollRunsQueryKey
 } from '@workspace/api-client-react';
 import { formatINR, monthName, MONTHS } from '@/lib/format';
+import { suggestPayrollColumnMapping } from '@/lib/payrollColumnMapping';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { Button } from '@/components/ui/button';
@@ -55,6 +56,7 @@ const OPTIONAL_FIELDS = [
   { key: 'pt', label: 'PT (Professional Tax)' },
   { key: 'lop', label: 'LOP' },
   { key: 'otherDeductions', label: 'Other Deductions' },
+  { key: 'totalDeductions', label: 'Excel Total Deductions (Validation Only)', hint: 'Compared with employee deductions; never imported or shown on the payslip.' },
   { key: 'netSalary', label: 'Net Salary' },
 ];
 
@@ -159,17 +161,8 @@ export default function PayrollWizardPage() {
       setExcelHeaders(parseRes.headers);
       setRowCount(parseRes.rowCount);
       
-      // Pre-fill mapping
-      const newMapping: Record<string, string> = { ...savedMapping?.mapping };
-      
-      // Auto-suggest for empty ones
       const allFields = [...REQUIRED_FIELDS, ...RECOMMENDED_FIELDS, ...OPTIONAL_FIELDS];
-      allFields.forEach(f => {
-        if (!newMapping[f.key]) {
-          const match = parseRes.headers.find(h => h.toLowerCase().replace(/[^a-z0-9]/g, '') === f.label.toLowerCase().replace(/[^a-z0-9]/g, ''));
-          if (match) newMapping[f.key] = match;
-        }
-      });
+      const newMapping = suggestPayrollColumnMapping(parseRes.headers, allFields, savedMapping?.mapping);
       
       setColumnMapping(newMapping);
       setStep(2);
@@ -395,6 +388,9 @@ export default function PayrollWizardPage() {
                         {isReq && <Badge variant="outline" className="text-[10px] h-4 px-1">Required</Badge>}
                         {isRec && <Badge variant="outline" className="text-[10px] h-4 px-1 text-blue-600 border-blue-300">Recommended</Badge>}
                       </Label>
+                      {'hint' in field && typeof field.hint === 'string' ? (
+                        <p className="text-xs text-muted-foreground">{field.hint}</p>
+                      ) : null}
                       <Select 
                         value={columnMapping[field.key] || 'none'} 
                         onValueChange={(v) => setColumnMapping({...columnMapping, [field.key]: v === 'none' ? '' : v})}

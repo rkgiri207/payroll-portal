@@ -1043,6 +1043,8 @@ components:
           type: string
         otherDeductions:
           type: string
+        totalDeductions:
+          type: string
         netSalary:
           type: string
 

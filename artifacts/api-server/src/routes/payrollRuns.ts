@@ -195,8 +195,8 @@ router.delete('/payroll-runs/:runId/records/:recordId', requireAuth, async (req:
       employeeCount: count(),
       totalGross: sql<string>`coalesce(sum(${payrollRecordsTable.grossSalary}), 0)`,
       totalDeductions: sql<string>`coalesce(sum(
-        coalesce(${payrollRecordsTable.pfEmployee}, 0) + coalesce(${payrollRecordsTable.pfEmployer}, 0) +
-        coalesce(${payrollRecordsTable.esiEmployee}, 0) + coalesce(${payrollRecordsTable.esiEmployer}, 0) +
+        coalesce(${payrollRecordsTable.pfEmployee}, 0) +
+        coalesce(${payrollRecordsTable.esiEmployee}, 0) +
         coalesce(${payrollRecordsTable.pt}, 0) + coalesce(${payrollRecordsTable.lop}, 0) +
         coalesce(${payrollRecordsTable.otherDeductions}, 0)
       ), 0)`,

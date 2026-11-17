@@ -219,6 +219,7 @@ export interface ColumnMapping {
   pt?: string;
   lop?: string;
   otherDeductions?: string;
+  totalDeductions?: string;
   netSalary?: string;
 }
 

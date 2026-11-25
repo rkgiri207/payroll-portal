@@ -17,6 +17,7 @@ export const columnMappingSchema = z.object({
   basic: z.string().optional(),
   da: z.string().optional(),
   hra: z.string().optional(),
+  travelAllowance: z.string().optional(),
   otherEarnings: z.string().optional(),
   additionalEarnings: z.string().optional(),
   grossSalary: z.string().optional(),

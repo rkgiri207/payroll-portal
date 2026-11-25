@@ -1023,6 +1023,8 @@ components:
           type: string
         hra:
           type: string
+        travelAllowance:
+          type: string
         otherEarnings:
           type: string
         additionalEarnings:

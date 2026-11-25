@@ -46,6 +46,7 @@ const OPTIONAL_FIELDS = [
   { key: 'basic', label: 'Basic' },
   { key: 'da', label: 'DA' },
   { key: 'hra', label: 'HRA' },
+  { key: 'travelAllowance', label: 'Travel Allowance' },
   { key: 'otherEarnings', label: 'Other Earnings' },
   { key: 'additionalEarnings', label: 'Additional Earnings Field' },
   { key: 'grossSalary', label: 'Gross Salary' },

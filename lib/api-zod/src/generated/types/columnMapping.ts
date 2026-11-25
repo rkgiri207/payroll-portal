@@ -16,6 +16,7 @@ export interface ColumnMapping {
   basic?: string;
   da?: string;
   hra?: string;
+  travelAllowance?: string;
   otherEarnings?: string;
   additionalEarnings?: string;
   grossSalary?: string;

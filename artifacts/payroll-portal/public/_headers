@@ -1,0 +1,12 @@
+# The attendance link carries a one-time token: never cache it, never leak it in a Referer
+# header, keep it out of search engines, and allow only this page to use camera and location.
+/a/*
+  Cache-Control: no-store
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+  Permissions-Policy: geolocation=(self), camera=(self), microphone=()
+/attendance.html
+  Cache-Control: no-store
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+  Permissions-Policy: geolocation=(self), camera=(self), microphone=()

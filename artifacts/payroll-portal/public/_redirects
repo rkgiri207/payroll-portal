@@ -1,0 +1,3 @@
+# Employee attendance links open the small, separate attendance page (not the portal app).
+# Processed before netlify.toml rules, so the portal's catch-all does not take /a/* links.
+/a/*    /attendance.html    200

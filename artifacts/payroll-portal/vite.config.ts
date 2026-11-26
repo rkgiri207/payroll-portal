@@ -44,6 +44,13 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist'),
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: path.resolve(import.meta.dirname, 'index.html'),
+        // Small separate page for employee attendance links (/a/<token>); see attendance.html.
+        attendance: path.resolve(import.meta.dirname, 'attendance.html'),
+      },
+    },
   },
   server: {
     port,

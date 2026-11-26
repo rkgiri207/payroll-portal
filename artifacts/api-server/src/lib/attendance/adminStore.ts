@@ -154,8 +154,10 @@ export async function listEmployees(
   opts: { today: string; search: string | null; status: string | null; limit: number; offset: number },
 ): Promise<{ rows: EmployeeRow[]; total: number }> {
   const search = opts.search ? `%${opts.search.replace(/[%_\\]/g, m => `\\${m}`)}%` : null;
-  const where = `($2::text is null or e.employee_name ilike $2 or e.employee_code ilike $2)
-                 and ($3::text is null or e.status::text = $3)`;
+  // Placeholder numbers differ between the list query (after $1 = today) and the count query.
+  const filter = (searchParam: number, statusParam: number) =>
+    `($${searchParam}::text is null or e.employee_name ilike $${searchParam} or e.employee_code ilike $${searchParam})
+     and ($${statusParam}::text is null or e.status::text = $${statusParam})`;
   const { rows } = await q.query<{
     id: number; employee_code: string; employee_name: string; designation: string | null; branch: string | null;
     status: string; mobile_number: string | null; whatsapp_e164: string | null; attendance_applicable: boolean;
@@ -175,13 +177,13 @@ export async function listEmployees(
           where a.employee_id = e.id and a.kind = 'PRIMARY'
             and a.start_date <= $1::date and (a.end_date is null or a.end_date >= $1::date)
           order by a.start_date desc limit 1) pc on true
-      where ${where}
+      where ${filter(2, 3)}
       order by e.employee_name, e.id
       limit $4 offset $5`,
     [opts.today, search, opts.status, opts.limit, opts.offset],
   );
   const count = await q.query<{ total: number }>(
-    `select count(*)::int as total from employees e where ${where}`, [opts.today, search, opts.status],
+    `select count(*)::int as total from employees e where ${filter(1, 2)}`, [search, opts.status],
   );
   return {
     total: count.rows[0]?.total ?? 0,

@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/attendance-link/**/*", "src/pages/attendance/**/*"],
+  "exclude": ["node_modules", "dist"],
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "noEmit": true
+  }
+}

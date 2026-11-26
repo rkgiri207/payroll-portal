@@ -22,6 +22,9 @@ import PayrollWizardPage from '@/pages/payroll/index';
 import PayrollHistoryPage from '@/pages/payroll/history';
 import PayrollRunDetailPage from '@/pages/payroll/run-detail';
 import PayslipsPage from '@/pages/payslips/index';
+import AttendanceSetupPage from '@/pages/attendance/setup';
+import AttendanceDashboardPage from '@/pages/attendance/dashboard';
+import EmployeeProfilePage from '@/pages/attendance/employee-profile';
 
 import {
   Route,
@@ -63,6 +66,9 @@ function Router() {
             <Route path="/payroll/history" component={PayrollHistoryPage} />
             <Route path="/payroll/runs/:id" component={PayrollRunDetailPage} />
             <Route path="/payslips" component={PayslipsPage} />
+            <Route path="/attendance/setup" component={AttendanceSetupPage} />
+            <Route path="/attendance" component={AttendanceDashboardPage} />
+            <Route path="/attendance/employees/:id" component={EmployeeProfilePage} />
             <Route component={NotFound} />
           </Switch>
         </LayoutShell>

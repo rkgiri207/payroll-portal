@@ -1,9 +1,10 @@
 import { useEffect, ReactNode } from "react"
 import { Link, useLocation } from "wouter"
 import { 
-  Building2, 
-  Banknote, 
+  Building2,
+  Banknote,
   ChevronDown,
+  ClipboardCheck,
   FileText, 
   Settings, 
   LogOut,
@@ -35,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { clearSessionDeadline } from "@/lib/session-expiration"
+import { useMe as useAttendanceAccess } from "@/pages/attendance/use-attendance"
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -49,6 +51,15 @@ export function LayoutShell({ children }: { children: ReactNode }) {
   const { theme, setTheme } = useTheme()
   const { data: user, isLoading: isUserLoading, isError: isUserError } = useGetMe()
   const { data: settings } = useGetCompanySettings()
+  // The Attendance menu item appears only when the module is switched on and this user has access.
+  const attendanceAccess = useAttendanceAccess()
+  const navItems = attendanceAccess.data
+    ? [
+        ...NAV_ITEMS,
+        { href: "/attendance", label: "Attendance", icon: ClipboardCheck },
+        { href: "/attendance/setup", label: "Attendance Setup", icon: Settings },
+      ]
+    : NAV_ITEMS
   
   const logout = useLogout({
     mutation: {
@@ -94,7 +105,7 @@ export function LayoutShell({ children }: { children: ReactNode }) {
             <DropdownMenuContent align="start" className="w-56">
               <DropdownMenuLabel>Navigation</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {NAV_ITEMS.map((item) => (
+              {navItems.map((item) => (
                 <DropdownMenuItem key={item.href} asChild>
                   <Link href={item.href} className="cursor-pointer">
                     <item.icon className="h-4 w-4" />
@@ -115,7 +126,7 @@ export function LayoutShell({ children }: { children: ReactNode }) {
           </Link>
 
           <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 lg:flex">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const isActive = location === item.href || (item.href === '/payroll' && location.startsWith('/payroll/runs/'));
             return (
               <Link 

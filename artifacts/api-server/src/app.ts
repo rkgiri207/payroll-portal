@@ -7,6 +7,7 @@ import { pool } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import publicPayslipsRouter from './routes/publicPayslips';
+import attendanceWebhookRouter from './routes/attendanceWebhook';
 
 const app: Express = express();
 app.set("trust proxy", 1);
@@ -40,6 +41,10 @@ app.use(cors({
   origin: appBaseUrl,
   credentials: true,
 }));
+
+// Attendance webhook: needs the raw body to verify Meta's signature, so it is mounted
+// before the JSON parser. Answers 404 unless ATTENDANCE_ENABLED=true.
+app.use('/api/attendance/webhook', attendanceWebhookRouter);
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));

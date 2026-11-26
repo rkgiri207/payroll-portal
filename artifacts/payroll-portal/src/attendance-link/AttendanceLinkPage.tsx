@@ -15,6 +15,7 @@ export type Screen =
   | { name: 'done'; message: Message };
 
 export interface Handlers {
+  onReload(): void;
   onCheckLocation(): void;
   onTakePhoto(): void;
   onRetake(): void;
@@ -35,12 +36,15 @@ function Countdown({ secondsLeft }: { secondsLeft: number }) {
   );
 }
 
-function Problem({ message }: { message: Message | null }) {
+function Problem({ message, onReload }: { message: Message | null; onReload?: () => void }) {
   if (!message) return null;
   return (
     <div className="problem" role="alert">
       <strong>{message.title}</strong>
       <p>{message.body}</p>
+      {message.action === 'reload' && onReload && (
+        <button type="button" className="btn secondary" onClick={onReload}>Reload this page</button>
+      )}
     </div>
   );
 }
@@ -90,7 +94,7 @@ export function ScreenView(props: { screen: Screen; secondsLeft: number; handler
           We check that you are at the campus. Your phone will ask permission to use your location.
           Your location is read once, only now, and you are not tracked.
         </p>
-        <Problem message={screen.problem} />
+        <Problem message={screen.problem} onReload={handlers.onReload} />
         <button className="btn" onClick={handlers.onCheckLocation} disabled={screen.busy}>
           {screen.busy ? 'Checking your location…' : 'Check my location'}
         </button>
@@ -197,6 +201,20 @@ export default function AttendanceLinkPage({ token }: { token: string }) {
     return () => { cancelled = true; };
   }, [starting]);
 
+  // If location was refused, the browser keeps that answer until the page is reloaded. When the
+  // employee switches the permission on in the browser settings, reload once so it takes effect.
+  const needsReload = screen.name === 'location' && screen.problem?.action === 'reload';
+  useEffect(() => {
+    if (!needsReload || !('permissions' in navigator)) return;
+    let status: PermissionStatus | null = null;
+    let cancelled = false;
+    const onChange = () => { if (status?.state === 'granted') window.location.reload(); };
+    navigator.permissions.query({ name: 'geolocation' })
+      .then(s => { if (cancelled) return; status = s; s.addEventListener('change', onChange); })
+      .catch(() => undefined); // older browsers: the "Reload this page" button is the fallback
+    return () => { cancelled = true; status?.removeEventListener('change', onChange); };
+  }, [needsReload]);
+
   const onCheckLocation = useCallback(async () => {
     if (busyRef.current || screen.name !== 'location') return;
     busyRef.current = true;
@@ -287,6 +305,7 @@ export default function AttendanceLinkPage({ token }: { token: string }) {
         secondsLeft={secondsLeft}
         videoRef={videoRef}
         handlers={{
+          onReload: () => window.location.reload(),
           onCheckLocation: () => void onCheckLocation(),
           onTakePhoto,
           onRetake,

@@ -1,7 +1,12 @@
 /** Plain-language text for every situation the employee can meet. No technical jargon. */
 import type { ClosedState, Confirmation, LocationFailure } from './api';
 
-export interface Message { title: string; body: string }
+export interface Message {
+  title: string;
+  body: string;
+  /** When set, the screen offers a button for this action (e.g. reload the page). */
+  action?: 'reload';
+}
 
 const WORD = { IN: 'check-in', OUT: 'check-out' } as const;
 
@@ -24,7 +29,8 @@ export function geolocationErrorCopy(code: number | null): Message {
   if (code === 1) {
     return {
       title: 'Location is switched off for this page',
-      body: 'Allow location for this website. iPhone: Settings > Privacy & Security > Location Services > Safari Websites, set to "While Using", and turn on Precise Location. Android: tap the lock icon next to the address, then Permissions > Location > Allow. Then try again.',
+      body: 'Allow location for this website. iPhone: Settings > Privacy & Security > Location Services > Safari Websites, set to "While Using", and turn on Precise Location. Android: tap the lock icon next to the address, then Permissions > Location > Allow. After you change this, the page must be reloaded: tap "Reload this page" below, then tap "Check my location" again.',
+      action: 'reload',
     };
   }
   if (code === 3) {

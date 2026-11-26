@@ -27,7 +27,7 @@ if (token) {
       <ScreenView
         screen={{ name: 'closed', message: closedCopy('NOT_FOUND') }}
         secondsLeft={0}
-        handlers={{ onCheckLocation() {}, onTakePhoto() {}, onRetake() {}, onSubmit() {}, onRetry() {} }}
+        handlers={{ onReload() {}, onCheckLocation() {}, onTakePhoto() {}, onRetake() {}, onSubmit() {}, onRetry() {} }}
       />
     </main>,
   );

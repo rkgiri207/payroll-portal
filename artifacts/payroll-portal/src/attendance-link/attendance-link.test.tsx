@@ -45,6 +45,28 @@ test('location problems explain what to do, show attempts, and never blame the e
   assert.match(locationFailureCopy('CAMPUS_NOT_ALLOWED', { attemptsLeft: null, requiredAccuracyM: 10, locked: false }).title, /not assigned/);
 });
 
+test('a refused location tells the employee to reload the page after changing the setting', () => {
+  const denied = geolocationErrorCopy(1);
+  assert.equal(denied.action, 'reload');
+  assert.match(denied.body, /must be reloaded/);
+  assert.match(denied.body, /Reload this page/);
+  // Other location problems do not ask for a reload.
+  assert.equal(geolocationErrorCopy(2).action, undefined);
+  assert.equal(geolocationErrorCopy(3).action, undefined);
+  assert.equal(geolocationErrorCopy(null).action, undefined);
+
+  const info: LinkInfo = { type: 'IN', campusName: 'Main', expiresAt: Date.now() + 240_000, locationVerified: false, attemptsLeft: 3, requiredAccuracyM: 10 };
+  const withDenied = renderToStaticMarkup(
+    <ScreenView screen={{ name: 'location', info, busy: false, problem: denied }} secondsLeft={200} handlers={handlers} />,
+  );
+  assert.match(withDenied, /Reload this page/);
+  assert.match(withDenied, /Check my location/);                      // the main button is still there
+  const withOther = renderToStaticMarkup(
+    <ScreenView screen={{ name: 'location', info, busy: false, problem: geolocationErrorCopy(3) }} secondsLeft={200} handlers={handlers} />,
+  );
+  assert.ok(!/Reload this page/.test(withOther));
+});
+
 test('permission and device problems have step-by-step help for iPhone and Android', () => {
   assert.match(geolocationErrorCopy(1).body, /iPhone: Settings/);
   assert.match(geolocationErrorCopy(1).body, /Android: tap the lock icon/);
@@ -161,7 +183,7 @@ test('sending the selfie reads the confirmation and every refusal', async () => 
 });
 
 // ── Every screen renders ──────────────────────────────────────────────────────
-const handlers: Handlers = { onCheckLocation() {}, onTakePhoto() {}, onRetake() {}, onSubmit() {}, onRetry() {} };
+const handlers: Handlers = { onReload() {}, onCheckLocation() {}, onTakePhoto() {}, onRetake() {}, onSubmit() {}, onRetry() {} };
 const info: LinkInfo = { type: 'IN', campusName: 'Main Campus', expiresAt: Date.now() + 240_000, locationVerified: false, attemptsLeft: 3, requiredAccuracyM: 10 };
 const html = (screen: Screen, secondsLeft = 227) => renderToStaticMarkup(<ScreenView screen={screen} secondsLeft={secondsLeft} handlers={handlers} />);
 

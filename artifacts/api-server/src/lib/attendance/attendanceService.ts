@@ -7,8 +7,12 @@ import { withTransaction, type PoolLike } from './db';
 import { findValidEvent } from './eventStore';
 import type { InboundMessage, InboundStatus } from './inbound';
 import {
-  alreadyMarkedText, campusChoiceText, comingSoonText, helpText, needInFirstText, noCampusText,
+  alreadyMarkedText, campusChoiceText, helpText, needInFirstText, noCampusText, outsideYearText,
 } from './messages';
+import { findAcademicYearForDate, isOutsideAcademicYear } from '../leave/academicYear';
+import { handleDirectorMessage } from '../leave/directorMessages';
+import { handlePermissionCommand } from '../leave/employeePermission';
+import { handleBalanceCommand, handleLeaveCommand } from '../leave/leaveCommands';
 import { applyDeliveryStatus } from './outboxStore';
 import { processOutbox } from './outboxWorker';
 import { loadSettings } from './settings';
@@ -70,6 +74,17 @@ export async function handleInboundMessage(deps: ServiceDeps, message: InboundMe
     return outcome;
   };
 
+  // The Director answering a leave request (a button tap, or the reason for a rejection). Not an employee command.
+  try {
+    const director = await handleDirectorMessage(deps.pool, message);
+    if (director) {
+      if (director === 'REPLIED') await flushOutbox(deps);
+      return finish(director);
+    }
+  } catch (error) {
+    return finish('ERROR', error instanceof Error ? error.message : 'Unexpected error');
+  }
+
   if (!employee) return finish('IGNORED_UNREGISTERED');
   if (message.type !== 'text') return finish('IGNORED_NOT_TEXT');
   if (!parsed) return finish('IGNORED_NOT_COMMAND');
@@ -86,9 +101,13 @@ export async function handleInboundMessage(deps: ServiceDeps, message: InboundMe
         await reply('HELP', helpText(), 'help');
         break;
       case 'LEAVE':
-      case 'PERMISSION':
+        await handleLeaveCommand(deps, employee, message);
+        break;
       case 'BALANCE':
-        await reply('COMING_SOON', comingSoonText(), 'soon');
+        await handleBalanceCommand(deps, employee, message);
+        break;
+      case 'PERMISSION':
+        await handlePermissionCommand(deps, employee, message);
         break;
       case 'IN':
       case 'OUT':
@@ -117,6 +136,13 @@ async function startAttendance(
       employee: { id: employee.employeeId, whatsapp: message.from },
       kind: 'HELP', body, idempotencyKey: `reply:${message.id}:${suffix}`,
     });
+
+  // The academic year is the organisation's own. Outside every year, attendance is refused unless
+  // the admin switched on "allow attendance outside the academic year" (then it is flagged instead).
+  if (!settings.allowOutsideAcademicYear && isOutsideAcademicYear(await findAcademicYearForDate(deps.pool, workDate))) {
+    await info(outsideYearText(), 'outside-year');
+    return;
+  }
 
   const existing = await findValidEvent(deps.pool, employee.employeeId, workDate, type);
   if (existing) {

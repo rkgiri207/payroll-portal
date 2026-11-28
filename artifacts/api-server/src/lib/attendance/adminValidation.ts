@@ -117,6 +117,8 @@ export interface RegistrationInput {
   /** Digits with country code (e.g. 919849136605), or null to clear. */
   whatsapp: string | null;
   attendanceApplicable: boolean;
+  /** Works during school vacations (so a vacation is not a day off for them), or null to leave it as it is. */
+  reportsDuringVacations: boolean | null;
 }
 
 export function validateRegistration(body: unknown): Result<RegistrationInput> {
@@ -127,7 +129,12 @@ export function validateRegistration(body: unknown): Result<RegistrationInput> {
     if (!whatsapp) return fail('Enter a valid 10-digit Indian mobile number (with or without +91)');
   }
   if (typeof body.attendanceApplicable !== 'boolean') return fail('Attendance applicable must be true or false');
-  return ok({ whatsapp, attendanceApplicable: body.attendanceApplicable });
+  let reportsDuringVacations: boolean | null = null;
+  if (body.reportsDuringVacations !== undefined && body.reportsDuringVacations !== null) {
+    if (typeof body.reportsDuringVacations !== 'boolean') return fail('Reports during vacations must be true or false');
+    reportsDuringVacations = body.reportsDuringVacations;
+  }
+  return ok({ whatsapp, attendanceApplicable: body.attendanceApplicable, reportsDuringVacations });
 }
 
 export interface AssignmentInput {

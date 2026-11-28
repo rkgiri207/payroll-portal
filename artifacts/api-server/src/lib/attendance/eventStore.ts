@@ -15,6 +15,8 @@ export interface NewAttendanceEvent {
   tokenId: string;
   /** The server clock reading used for the late calculation; stored as the event time. */
   serverTs: Date;
+  /** True when the date is outside every academic year (only possible when the admin allows it). */
+  outsideAcademicYear?: boolean;
 }
 
 export type RecordResult =
@@ -41,15 +43,15 @@ export async function recordAttendanceEvent(
          (employee_id, campus_id, event_type, work_date, punctuality, late_minutes,
           shift_login_time, shift_logout_time, shift_grace_minutes,
           gps_lat, gps_lng, gps_accuracy_m, gps_distance_m, gps_result,
-          selfie_path, source, token_id, server_ts)
-       values ($1, $2, $3, $4::date, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'PASSED', $14, 'WHATSAPP_LINK', $15, $16)
+          selfie_path, source, token_id, server_ts, outside_academic_year)
+       values ($1, $2, $3, $4::date, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'PASSED', $14, 'WHATSAPP_LINK', $15, $16, $17)
        on conflict do nothing
        returning id, server_ts`,
       [
         event.employeeId, event.campusId, event.eventType, event.workDate, event.punctuality,
         event.lateMinutes, event.shift?.loginTime ?? null, event.shift?.logoutTime ?? null,
         event.shift?.graceMinutes ?? null, event.gps.lat, event.gps.lng, event.gps.accuracyM,
-        event.gps.distanceM, event.selfiePath, event.tokenId, event.serverTs,
+        event.gps.distanceM, event.selfiePath, event.tokenId, event.serverTs, event.outsideAcademicYear ?? false,
       ],
     );
     const row = inserted.rows[0];

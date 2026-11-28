@@ -49,6 +49,10 @@ export default defineConfig({
         main: path.resolve(import.meta.dirname, 'index.html'),
         // Small separate page for employee attendance links (/a/<token>); see attendance.html.
         attendance: path.resolve(import.meta.dirname, 'attendance.html'),
+        // The employee's leave form (/l/<token>); see leave.html.
+        leave: path.resolve(import.meta.dirname, 'leave.html'),
+        // The employee's permission form (/p/<token>); see permission.html.
+        permission: path.resolve(import.meta.dirname, 'permission.html'),
       },
     },
   },

@@ -12,6 +12,8 @@ import payslipsRouter from './payslips';
 import payslipSharesRouter from './payslipShares';
 import payrollWhatsAppRouter from './payrollWhatsApp';
 import attendanceRouter from './attendance';
+import leaveFormRouter from './leaveForm';
+import permissionFormRouter from './permissionForm';
 
 const router = Router();
 
@@ -28,5 +30,7 @@ router.use(payslipsRouter);
 router.use(payslipSharesRouter);
 router.use(payrollWhatsAppRouter);
 router.use(attendanceRouter);
+router.use(leaveFormRouter);
+router.use(permissionFormRouter);
 
 export default router;

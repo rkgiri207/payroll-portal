@@ -25,6 +25,9 @@ import PayslipsPage from '@/pages/payslips/index';
 import AttendanceSetupPage from '@/pages/attendance/setup';
 import AttendanceDashboardPage from '@/pages/attendance/dashboard';
 import EmployeeProfilePage from '@/pages/attendance/employee-profile';
+import HolidayCalendarPage from '@/pages/attendance/holidays';
+import LeavePoliciesPage from '@/pages/attendance/leave-policies';
+import LeaveRequestsPage from '@/pages/attendance/leave-requests';
 
 import {
   Route,
@@ -69,6 +72,9 @@ function Router() {
             <Route path="/attendance/setup" component={AttendanceSetupPage} />
             <Route path="/attendance" component={AttendanceDashboardPage} />
             <Route path="/attendance/employees/:id" component={EmployeeProfilePage} />
+            <Route path="/leave/calendar" component={HolidayCalendarPage} />
+            <Route path="/leave/policies" component={LeavePoliciesPage} />
+            <Route path="/leave/requests" component={LeaveRequestsPage} />
             <Route component={NotFound} />
           </Switch>
         </LayoutShell>

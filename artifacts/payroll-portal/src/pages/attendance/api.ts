@@ -63,8 +63,8 @@ export interface SettingRow {
 
 export interface EmployeeRow {
   id: number; employeeCode: string; employeeName: string; designation: string | null; branch: string | null;
-  status: string; mobileNumber: string | null; whatsapp: string | null; attendanceApplicable: boolean;
-  hasRegistration: boolean; primaryCampusId: number | null; primaryCampusName: string | null; activeTemporary: number;
+  status: string; mobileNumber: string | null; joiningDate: string | null; whatsapp: string | null; attendanceApplicable: boolean;
+  reportsDuringVacations: boolean; hasRegistration: boolean; primaryCampusId: number | null; primaryCampusName: string | null; activeTemporary: number;
 }
 
 export interface Assignment {
@@ -74,9 +74,21 @@ export interface Assignment {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 export interface DaySummary {
-  expected: number; present: number; late: number; unmarked: number; openExceptions: number; pendingReview: number;
+  expected: number; present: number; late: number; unmarked: number; onLeave: number; openExceptions: number; pendingReview: number;
 }
-export interface CampusSummary { campusId: number; campusName: string; expected: number; present: number; late: number; unmarked: number }
+export interface CampusSummary { campusId: number; campusName: string; expected: number; present: number; late: number; unmarked: number; onLeave: number }
+
+export interface OnLeaveItem {
+  employeeId: number; employeeCode: string; employeeName: string; campusName: string; leaveType: string;
+  halfDay: boolean; dayMode: 'FULL' | 'FIRST_HALF' | 'SECOND_HALF'; startDate: string; endDate: string; totalDays: number;
+}
+export interface PermissionToday { employeeId: number; employeeCode: string; employeeName: string; campusName: string; startTime: string; endTime: string; reason: string }
+export interface UpcomingDay { date: string; employees: number }
+export interface DayNotice { kind: 'HOLIDAY' | 'WEEKLY_OFF' | 'VACATION' | 'SPECIAL_WORKING_DAY' | 'OPTIONAL'; name: string }
+export interface LeaveDashboard {
+  onLeave: OnLeaveItem[]; permissionsToday: PermissionToday[]; pendingLeave: number; pendingPermission: number;
+  upcoming: UpcomingDay[]; notice: DayNotice | null;
+}
 
 export interface FeedEvent {
   id: string; eventType: 'IN' | 'OUT'; serverTs: string; punctuality: string; lateMinutes: number | null;
@@ -93,6 +105,7 @@ export interface AlertProblem {
 export interface Dashboard {
   workDate: string; serverTime: string; summary: DaySummary; campuses: CampusSummary[];
   feed: FeedEvent[]; alertProblems: AlertProblem[]; warnings: string[]; alertMode: string;
+  leave: LeaveDashboard;
 }
 
 export interface UnmarkedEmployee { employeeId: number; employeeCode: string; employeeName: string; campusName: string }
@@ -105,7 +118,7 @@ export interface ExceptionRow {
 
 export interface EmployeeProfile {
   employee: { id: number; employeeCode: string; employeeName: string; designation: string | null; branch: string | null; status: string };
-  registration: { whatsapp: string | null; attendanceApplicable: boolean } | null;
+  registration: { whatsapp: string | null; attendanceApplicable: boolean; reportsDuringVacations?: boolean } | null;
   assignments: Assignment[];
   recentEvents: FeedEvent[];
 }
@@ -117,6 +130,7 @@ export interface EmployeeInput {
   mobileNumber?: string | null;
   designation?: string | null;
   branch?: string | null;
+  joiningDate?: string | null;
   status?: 'ACTIVE' | 'INACTIVE';
 }
 export interface CreatedEmployee { id: number; employeeCode: string; employeeName: string }

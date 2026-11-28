@@ -122,7 +122,35 @@ test('a sweep runs every step and reports counts', async () => {
   assert.deepEqual(result, {
     outbox: { claimed: 0, sent: 0, stubbed: 0, retried: 0, failed: 0 },
     missingOutFlagged: 0, digestQueued: false, failedSteps: [],
+    accrual: { credits: 0, adjustments: 0 },        // the daily leave accrual ran (nothing was due)
   });
+});
+
+test('the leave accrual runs once a day: a second pass the same day skips it', async () => {
+  const today = istParts(NOW).workDate;
+  const db = new FakeDb()
+    .on(/select value from attendance_settings where key = \$1/, { rows: [{ value: today }] })
+    .on(/from attendance_settings/, { rows: [] })
+    .on(/from attendance_events ev/, { rows: [] })
+    .on(/with due as/, { rows: [] });
+  const result = await runSweep(depsFor(db));
+  assert.equal(result.accrual, undefined, 'already done today');
+  assert.equal(db.where(/from academic_years/).length, 0, 'and nothing was even loaded for it');
+  assert.equal(db.where(/insert into attendance_settings/).length, 0, 'the marker is left as it was');
+});
+
+test('a failing leave accrual does not stop the other steps', async () => {
+  const db = new FakeDb()
+    .on(/select value from attendance_settings where key = \$1/, () => { throw new Error('boom'); })
+    .on(/from attendance_settings/, { rows: [] })
+    .on(/from attendance_events ev/, { rows: [] })
+    .on(/with due as/, { rows: [{
+      id: 'm1', recipient_type: 'EMPLOYEE', recipient_e164: '919849136605', kind: 'HELP', delivery_mode: 'TEXT',
+      template_name: null, template_language: null, payload: { body: 'x' }, attempts: 1, max_attempts: 5,
+    }] });
+  const result = await runSweep(depsFor(db));
+  assert.deepEqual(result.failedSteps, ['leaveAccrual']);
+  assert.equal(result.outbox.claimed, 1);
 });
 
 test('one failing step does not stop the others', async () => {

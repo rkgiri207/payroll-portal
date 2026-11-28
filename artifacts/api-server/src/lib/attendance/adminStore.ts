@@ -1,17 +1,12 @@
 import { PG_FOREIGN_KEY_VIOLATION, PG_UNIQUE_VIOLATION, pgCode } from './adminAccess';
 import type { AssignmentInput, CampusInput, RegistrationInput, ShiftInput } from './adminValidation';
 import { withTransaction, type PoolLike, type Queryable } from './db';
+import { EXPECTED_BASE, EXPECTED_FILTER, ON_FULL_LEAVE } from './expectedSql';
 import { addDays } from './time';
 
 // NOTE: dates are cast to text and numerics to float8 in every query so the driver returns
 // plain strings and numbers (it would otherwise return Date objects and numeric strings).
 
-/** "Expected today": the campus shift runs on this weekday and the employee is active and applicable. */
-const EXPECTED_FILTER = `
-  ae.attendance_applicable and e.status = 'ACTIVE'
-  and a.start_date <= $1::date and (a.end_date is null or a.end_date >= $1::date)
-  and exists (select 1 from campus_shifts s
-               where s.campus_id = a.campus_id and s.effective_from <= $1::date and $2::smallint = any(s.weekdays))`;
 
 export type StoreResult<T> = { ok: true; value: T } | { ok: false; error: string };
 const okay = <T>(value: T): StoreResult<T> => ({ ok: true, value });
@@ -145,8 +140,8 @@ export async function deleteFutureShift(q: Queryable, id: number, today: string)
 // ── Employees: registration and assignments ──────────────────────────────────
 export interface EmployeeRow {
   id: number; employeeCode: string; employeeName: string; designation: string | null; branch: string | null;
-  status: string; mobileNumber: string | null; whatsapp: string | null; attendanceApplicable: boolean;
-  hasRegistration: boolean; primaryCampusId: number | null; primaryCampusName: string | null; activeTemporary: number;
+  status: string; mobileNumber: string | null; joiningDate: string | null; whatsapp: string | null; attendanceApplicable: boolean;
+  reportsDuringVacations: boolean; hasRegistration: boolean; primaryCampusId: number | null; primaryCampusName: string | null; activeTemporary: number;
 }
 
 export async function listEmployees(
@@ -160,11 +155,13 @@ export async function listEmployees(
      and ($${statusParam}::text is null or e.status::text = $${statusParam})`;
   const { rows } = await q.query<{
     id: number; employee_code: string; employee_name: string; designation: string | null; branch: string | null;
-    status: string; mobile_number: string | null; whatsapp_e164: string | null; attendance_applicable: boolean;
-    has_registration: boolean; primary_campus_id: number | null; primary_campus_name: string | null; active_temporary: number;
+    status: string; mobile_number: string | null; joining_date: string | null; whatsapp_e164: string | null; attendance_applicable: boolean;
+    reports_during_vacations: boolean; has_registration: boolean; primary_campus_id: number | null; primary_campus_name: string | null; active_temporary: number;
   }>(
     `select e.id, e.employee_code, e.employee_name, e.designation, e.branch, e.status::text as status, e.mobile_number,
+            to_char(e.joining_date, 'YYYY-MM-DD') as joining_date,
             ae.whatsapp_e164, coalesce(ae.attendance_applicable, true) as attendance_applicable,
+            coalesce(ae.reports_during_vacations, false) as reports_during_vacations,
             (ae.employee_id is not null) as has_registration,
             pc.id as primary_campus_id, pc.name as primary_campus_name,
             (select count(*) from employee_campus_assignments t
@@ -189,21 +186,21 @@ export async function listEmployees(
     total: count.rows[0]?.total ?? 0,
     rows: rows.map(r => ({
       id: r.id, employeeCode: r.employee_code, employeeName: r.employee_name, designation: r.designation,
-      branch: r.branch, status: r.status, mobileNumber: r.mobile_number, whatsapp: r.whatsapp_e164,
-      attendanceApplicable: r.attendance_applicable, hasRegistration: r.has_registration,
+      branch: r.branch, status: r.status, mobileNumber: r.mobile_number, joiningDate: r.joining_date, whatsapp: r.whatsapp_e164,
+      attendanceApplicable: r.attendance_applicable, reportsDuringVacations: r.reports_during_vacations, hasRegistration: r.has_registration,
       primaryCampusId: r.primary_campus_id, primaryCampusName: r.primary_campus_name, activeTemporary: r.active_temporary,
     })),
   };
 }
 
-export interface Registration { employeeId: number; whatsapp: string | null; attendanceApplicable: boolean }
+export interface Registration { employeeId: number; whatsapp: string | null; attendanceApplicable: boolean; reportsDuringVacations: boolean }
 
 export async function getRegistration(q: Queryable, employeeId: number): Promise<Registration | null> {
-  const { rows } = await q.query<{ employee_id: number; whatsapp_e164: string | null; attendance_applicable: boolean }>(
-    'select employee_id, whatsapp_e164, attendance_applicable from attendance_employees where employee_id = $1', [employeeId],
+  const { rows } = await q.query<{ employee_id: number; whatsapp_e164: string | null; attendance_applicable: boolean; reports_during_vacations: boolean }>(
+    'select employee_id, whatsapp_e164, attendance_applicable, reports_during_vacations from attendance_employees where employee_id = $1', [employeeId],
   );
   const r = rows[0];
-  return r ? { employeeId: r.employee_id, whatsapp: r.whatsapp_e164, attendanceApplicable: r.attendance_applicable } : null;
+  return r ? { employeeId: r.employee_id, whatsapp: r.whatsapp_e164, attendanceApplicable: r.attendance_applicable, reportsDuringVacations: r.reports_during_vacations } : null;
 }
 
 /** Create or update an employee's attendance registration (WhatsApp number and on/off switch). */
@@ -213,17 +210,18 @@ export async function saveRegistration(
   const before = await getRegistration(q, employeeId);
   try {
     await q.query(
-      `insert into attendance_employees (employee_id, whatsapp_e164, attendance_applicable, registered_at, registered_by)
-       values ($1, $2::text, $3, case when $2::text is null then null else now() end, $4)
+      `insert into attendance_employees (employee_id, whatsapp_e164, attendance_applicable, registered_at, registered_by, reports_during_vacations)
+       values ($1, $2::text, $3, case when $2::text is null then null else now() end, $4, coalesce($5::boolean, false))
        on conflict (employee_id) do update set
          whatsapp_e164 = excluded.whatsapp_e164,
          attendance_applicable = excluded.attendance_applicable,
+         reports_during_vacations = coalesce($5::boolean, attendance_employees.reports_during_vacations),
          registered_at = case
            when excluded.whatsapp_e164 is null then null
            when attendance_employees.whatsapp_e164 is distinct from excluded.whatsapp_e164 then now()
            else attendance_employees.registered_at end,
          registered_by = $4, updated_at = now()`,
-      [employeeId, input.whatsapp, input.attendanceApplicable, userId],
+      [employeeId, input.whatsapp, input.attendanceApplicable, userId, input.reportsDuringVacations],
     );
   } catch (error) {
     if (pgCode(error) === PG_UNIQUE_VIOLATION) return failed('That WhatsApp number is already registered to another employee');
@@ -318,10 +316,10 @@ export async function removeAssignment(
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
-export interface CampusSummary { campusId: number; campusName: string; expected: number; present: number; late: number; unmarked: number }
+export interface CampusSummary { campusId: number; campusName: string; expected: number; present: number; late: number; unmarked: number; onLeave: number }
 
 export async function getCampusSummaries(q: Queryable, workDate: string, weekday: number): Promise<CampusSummary[]> {
-  const { rows } = await q.query<{ id: number; name: string; expected: number; present: number; late: number; unmarked: number }>(
+  const { rows } = await q.query<{ id: number; name: string; expected: number; present: number; late: number; unmarked: number; on_leave: number }>(
     `select c.id, c.name,
        (select count(distinct a.employee_id) from employee_campus_assignments a
           join attendance_employees ae on ae.employee_id = a.employee_id
@@ -337,11 +335,15 @@ export async function getCampusSummaries(q: Queryable, workDate: string, weekday
           join employees e on e.id = a.employee_id
          where a.campus_id = c.id and ${EXPECTED_FILTER}
            and not exists (select 1 from attendance_events ev where ev.employee_id = a.employee_id
-                            and ev.work_date = $1::date and ev.event_type = 'IN' and ev.is_valid))::int as unmarked
+                            and ev.work_date = $1::date and ev.event_type = 'IN' and ev.is_valid))::int as unmarked,
+       (select count(distinct a.employee_id) from employee_campus_assignments a
+          join attendance_employees ae on ae.employee_id = a.employee_id
+          join employees e on e.id = a.employee_id
+         where a.campus_id = c.id and ${EXPECTED_BASE} and ${ON_FULL_LEAVE})::int as on_leave
        from campuses c where c.is_active order by c.name`,
     [workDate, weekday],
   );
-  return rows.map(r => ({ campusId: r.id, campusName: r.name, expected: r.expected, present: r.present, late: r.late, unmarked: r.unmarked }));
+  return rows.map(r => ({ campusId: r.id, campusName: r.name, expected: r.expected, present: r.present, late: r.late, unmarked: r.unmarked, onLeave: r.on_leave }));
 }
 
 export interface UnmarkedEmployee { employeeId: number; employeeCode: string; employeeName: string; campusName: string }

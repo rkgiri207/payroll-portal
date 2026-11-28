@@ -1,0 +1,39 @@
+/* Extras for the leave form. The base look comes from the attendance page's stylesheet. */
+.page > .stack { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 4px; }
+.stack .card { max-width: none; }
+
+h1 { font-size: 1.35rem; margin: 4px 0 6px; }
+h2 { font-size: 1.1rem; margin: 0 0 10px; }
+.muted { color: var(--muted); font-size: 0.92rem; margin: 2px 0 0; }
+.pre { white-space: pre-line; }
+
+.field { display: flex; flex-direction: column; gap: 6px; margin: 14px 0; }
+.field label { font-weight: 600; font-size: 0.95rem; }
+
+.field select, .field input, .field textarea {
+  width: 100%;
+  font: inherit;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  min-height: 48px;
+}
+.field textarea { resize: vertical; }
+.field select:focus, .field input:focus, .field textarea:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+.summary {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--ok);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 12px 0;
+}
+
+.btn { width: 100%; margin-top: 8px; }
+
+.requests { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.requests li { display: flex; flex-direction: column; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.requests li:last-child { border-bottom: 0; padding-bottom: 0; }
+.requests .btn { margin-top: 0; }

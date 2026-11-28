@@ -69,8 +69,8 @@ const settingRows: SettingRow[] = [
 ];
 
 const employees: EmployeeRow[] = [
-  { id: 7, employeeCode: 'T001', employeeName: 'Asha Rao', designation: 'Teacher', branch: 'Main', status: 'ACTIVE', mobileNumber: '9849136605', whatsapp: '919849136605', attendanceApplicable: true, hasRegistration: true, primaryCampusId: 1, primaryCampusName: 'Main Campus', activeTemporary: 1 },
-  { id: 8, employeeCode: 'T002', employeeName: 'Ravi Kumar', designation: null, branch: null, status: 'INACTIVE', mobileNumber: null, whatsapp: null, attendanceApplicable: false, hasRegistration: false, primaryCampusId: null, primaryCampusName: null, activeTemporary: 0 },
+  { id: 7, employeeCode: 'T001', employeeName: 'Asha Rao', designation: 'Teacher', branch: 'Main', status: 'ACTIVE', mobileNumber: '9849136605', joiningDate: '2024-06-10', whatsapp: '919849136605', attendanceApplicable: true, reportsDuringVacations: true, hasRegistration: true, primaryCampusId: 1, primaryCampusName: 'Main Campus', activeTemporary: 1 },
+  { id: 8, employeeCode: 'T002', employeeName: 'Ravi Kumar', designation: null, branch: null, status: 'INACTIVE', mobileNumber: null, joiningDate: null, whatsapp: null, attendanceApplicable: false, reportsDuringVacations: false, hasRegistration: false, primaryCampusId: null, primaryCampusName: null, activeTemporary: 0 },
 ];
 
 function render(node: React.ReactElement, preload: (client: QueryClient) => void = () => {}): string {
@@ -162,6 +162,8 @@ test('employees tab shows number, campus and attendance status, and flags what i
   assert.match(html, /Inactive/);
   assert.match(html, /Add employee/);
   assert.equal((html.match(/Set up/g) ?? []).length, 2);
+  assert.match(html, /Vacations/, 'works-during-vacations badge');
+  assert.equal((html.match(/>No joining date</g) ?? []).length, 1, 'only the employee without a date is flagged');
 });
 
 test('settings tab groups settings, offers the alert modes, and locks Director-only ones for others', () => {

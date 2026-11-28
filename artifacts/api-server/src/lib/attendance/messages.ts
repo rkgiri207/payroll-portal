@@ -59,14 +59,18 @@ export function noCampusText(): string {
   return 'You are not assigned to a campus for today. Please contact the school administration.';
 }
 
+export function outsideYearText(): string {
+  return 'Attendance cannot be marked today because it is outside the academic year. Please contact the school administration.';
+}
+
 export function needInFirstText(): string {
   return 'No check-in is recorded for you today. Please send IN first, or contact the school administration.';
 }
 
 export function helpText(): string {
   return (
-    'Available commands:\nIN - mark your check-in\nOUT - mark your check-out\nHELP - show this message\n\n' +
-    'LEAVE, PERMISSION and BALANCE are coming soon.'
+    'Available commands:\nIN - mark your check-in\nOUT - mark your check-out\nLEAVE - apply for leave\n' +
+    'PERMISSION - ask for a short absence\nBALANCE - see your leave balance\nHELP - show this message'
   );
 }
 

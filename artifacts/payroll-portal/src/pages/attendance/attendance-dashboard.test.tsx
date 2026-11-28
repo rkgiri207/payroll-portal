@@ -3,7 +3,7 @@ import test from 'node:test';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Router } from 'wouter';
-import type { Dashboard, EmployeeProfile, ExceptionRow, FeedEvent, UnmarkedEmployee } from './api';
+import type { Dashboard, EmployeeProfile, ExceptionRow, FeedEvent, LeaveDashboard, UnmarkedEmployee } from './api';
 import { DashboardView } from './dashboard';
 import {
   alertKindLabel, describeAlert, describeEvent, describeGps, describeReview, exceptionLabel, formatDay, formatTime,
@@ -72,12 +72,24 @@ const event = (over: Partial<FeedEvent>): FeedEvent => ({
   employeeName: 'Asha Rao', campusName: 'Main Campus', directorAlert: 'DELIVERED', ...over,
 });
 
+const leaveData = (over: Partial<LeaveDashboard> = {}): LeaveDashboard => ({
+  onLeave: [
+    { employeeId: 11, employeeCode: 'T011', employeeName: 'Bala Kumar', campusName: 'Main Campus', leaveType: 'Casual Leave', halfDay: false, dayMode: 'FULL', startDate: '2026-03-02', endDate: '2026-03-03', totalDays: 2 },
+    { employeeId: 12, employeeCode: 'T012', employeeName: 'Chitra Devi', campusName: 'North Campus', leaveType: 'Sick Leave', halfDay: true, dayMode: 'FIRST_HALF', startDate: '2026-03-02', endDate: '2026-03-02', totalDays: 0.5 },
+  ],
+  permissionsToday: [{ employeeId: 13, employeeCode: 'T013', employeeName: 'Dev Anand', campusName: 'North Campus', startTime: '10:00', endTime: '12:00', reason: 'Doctor appointment' }],
+  pendingLeave: 2, pendingPermission: 1,
+  upcoming: [0, 0, 2, 0, 1, 0, 3].map((employees, i) => ({ date: `2026-03-0${i + 3}`, employees })),
+  notice: null, ...over,
+});
+
 const data = (over: Partial<Dashboard> = {}): Dashboard => ({
   workDate: '2026-03-02', serverTime: '2026-03-02T05:30:00Z', alertMode: 'individual',
-  summary: { expected: 50, present: 41, late: 3, unmarked: 9, openExceptions: 2, pendingReview: 4 },
+  summary: { expected: 50, present: 41, late: 3, unmarked: 9, onLeave: 1, openExceptions: 2, pendingReview: 4 },
+  leave: leaveData(),
   campuses: [
-    { campusId: 1, campusName: 'Main Campus', expected: 30, present: 27, late: 2, unmarked: 3 },
-    { campusId: 2, campusName: 'North Campus', expected: 20, present: 14, late: 1, unmarked: 6 },
+    { campusId: 1, campusName: 'Main Campus', expected: 30, present: 27, late: 2, unmarked: 3, onLeave: 1 },
+    { campusId: 2, campusName: 'North Campus', expected: 20, present: 14, late: 1, unmarked: 6, onLeave: 0 },
   ],
   feed: [
     event({ id: 'e1' }),
@@ -98,13 +110,13 @@ function render(node: React.ReactElement, preload: (c: QueryClient) => void = ()
     <QueryClientProvider client={client}><Router ssrPath="/attendance">{node}</Router></QueryClientProvider>,
   );
 }
-const view = (d: Dashboard, tab: 'feed' | 'unmarked' | 'exceptions' | 'review' | 'alerts' = 'feed', fresh = new Set<string>(), preload?: (c: QueryClient) => void) =>
+const view = (d: Dashboard, tab: 'feed' | 'unmarked' | 'leave' | 'exceptions' | 'review' | 'alerts' = 'feed', fresh = new Set<string>(), preload?: (c: QueryClient) => void) =>
   render(<DashboardView data={d} fresh={fresh} tab={tab} onTab={() => {}} />, preload);
 
 // ── The dashboard ─────────────────────────────────────────────────────────────
 test('summary tiles show today\'s numbers', () => {
   const html = view(data());
-  for (const [label, value] of [['Expected', 50], ['Present', 41], ['Late', 3], ['Unmarked', 9], ['Needs review', 4], ['Open exceptions', 2]] as const) {
+  for (const [label, value] of [['Expected', 50], ['Present', 41], ['Late', 3], ['Unmarked', 9], ['On leave', 1], ['On permission', 1], ['Leave to approve', 2], ['Permissions to approve', 1], ['Needs review', 4], ['Open exceptions', 2], ['Failed alerts', 1]] as const) {
     assert.match(html, new RegExp(`data-testid="tile-${label.toLowerCase().replace(/\s+/g, '-')}"[^>]*>[\\s\\S]*?${label}[\\s\\S]*?>${value}<`), label);
   }
 });
@@ -151,7 +163,7 @@ test('a new arrival is highlighted', () => {
 });
 
 test('an empty day says so', () => {
-  assert.match(view(data({ feed: [], summary: { expected: 0, present: 0, late: 0, unmarked: 0, openExceptions: 0, pendingReview: 0 }, warnings: [] })), /No attendance recorded yet today/);
+  assert.match(view(data({ feed: [], summary: { expected: 0, present: 0, late: 0, unmarked: 0, onLeave: 0, openExceptions: 0, pendingReview: 0 }, warnings: [] })), /No attendance recorded yet today/);
 });
 
 test('tab labels carry the counts, and failed alerts are called out', () => {
@@ -231,4 +243,88 @@ test('the employee profile shows registration, campuses and recent attendance, w
   assert.match(html, /later phase/);
   assert.ok(!/View selfie/.test(html));                // selfies are never on the ordinary profile
   assert.match(render(<ProfileView profile={{ ...profile, assignments: [], registration: null, recentEvents: [] }} />), /Not registered[\s\S]*No campus assigned[\s\S]*No attendance recorded yet/);
+});
+
+// ── The glanceable layout ─────────────────────────────────────────────────────
+test('the headline shows the check-in rate and the status bar adds up to everyone', () => {
+  const html = view(data());
+  assert.match(html, /data-testid="hero-rate"[^>]*>82%</, '41 of 50 expected');
+  assert.match(html, /41 of 50 expected/);
+  assert.match(html, /role="img" aria-label="Out of 51: 38 on time, 3 late, 9 not checked in yet, 1 on leave"/);
+  const legend = html.match(/data-testid="status-legend"[\s\S]*?<\/ul>/)?.[0] ?? '';
+  for (const [label, n] of [['On time', 38], ['Late', 3], ['Not checked in yet', 9], ['On leave', 1]] as const) {
+    assert.match(legend, new RegExp(`>${label}</span><span[^>]*>${n}<`), label);
+  }
+});
+
+test('when nobody is expected the headline says so instead of showing a made-up percentage', () => {
+  const html = view(data({ summary: { expected: 0, present: 0, late: 0, unmarked: 0, onLeave: 0, openExceptions: 0, pendingReview: 0 }, warnings: [] }));
+  assert.match(html, /data-testid="hero-rate"[^>]*>—</);
+  assert.match(html, /Nobody is expected to check in today/);
+});
+
+test('"Needs your attention" counts everything waiting, and goes calm when nothing is', () => {
+  const busy = view(data());
+  assert.match(busy, /data-testid="attention-count"[^>]*>10 to look at</, '2 leave + 1 permission + 4 reviews + 2 exceptions + 1 failed alert');
+  assert.ok(!/data-testid="all-clear"/.test(busy));
+  assert.match(busy, /href="\/leave\/requests"[^>]*data-testid="tile-leave-to-approve"|data-testid="tile-leave-to-approve"[^>]*href="\/leave\/requests"/, 'leads straight to the approvals page');
+  const calm = view(data({
+    summary: { expected: 50, present: 50, late: 0, unmarked: 0, onLeave: 0, openExceptions: 0, pendingReview: 0 }, alertProblems: [],
+    leave: leaveData({ pendingLeave: 0, pendingPermission: 0 }), warnings: [],
+  }));
+  assert.match(calm, /data-testid="all-clear"/);
+  assert.match(calm, /All clear/);
+  assert.ok(!/data-testid="attention-count"/.test(calm));
+});
+
+test('a holiday, vacation, special working day or empty day gets a banner that explains the numbers', () => {
+  const none = view(data());
+  assert.ok(!/data-testid="day-notice"/.test(none), 'an ordinary day has no banner');
+  const holiday = view(data({ leave: leaveData({ notice: { kind: 'HOLIDAY', name: 'Gandhi Jayanthi' } }) }));
+  assert.match(holiday, /data-testid="day-notice"[\s\S]*?Holiday: Gandhi Jayanthi[\s\S]*?Nobody is expected to check in today/);
+  assert.match(view(data({ leave: leaveData({ notice: { kind: 'VACATION', name: 'Dasara Holidays' } }) })), /School vacation: Dasara Holidays[\s\S]*?reports during vacations/);
+  assert.match(view(data({ leave: leaveData({ notice: { kind: 'WEEKLY_OFF', name: 'Second Saturday' } }) })), /Weekly off: Second Saturday/);
+  assert.match(view(data({ leave: leaveData({ notice: { kind: 'SPECIAL_WORKING_DAY', name: 'Make-up day' } }) })), /Special working day: Make-up day[\s\S]*?Everyone is expected/);
+  const sunday = view(data({ summary: { expected: 0, present: 0, late: 0, unmarked: 0, onLeave: 0, openExceptions: 0, pendingReview: 0 }, warnings: [] }));
+  assert.match(sunday, /No shifts today/, 'no calendar entry but nobody expected: say why');
+});
+
+test('people on leave are shown on the card, in the next-7-days strip and in their own tab', () => {
+  const html = view(data());
+  const preview = html.match(/data-testid="onleave-preview"[\s\S]*?<\/ul>/)?.[0] ?? '';
+  assert.match(preview, /Bala Kumar[\s\S]*?Casual Leave/);
+  assert.match(preview, /Chitra Devi[\s\S]*?Sick Leave \(half-day\)/);
+  const strip = html.match(/data-testid="upcoming-leave"[\s\S]*?<\/ol>/)?.[0] ?? '';
+  assert.equal((strip.match(/<li /g) ?? []).length, 7, 'seven days');
+  assert.match(strip, /aria-label="Thu 05 Mar: 2 on leave"/);
+  assert.match(strip, /aria-label="Mon 09 Mar: 3 on leave"/);
+  assert.match(html, /On leave \(2\)/, 'the tab shows how many are listed');
+  const many = Array.from({ length: 8 }, (_, i) => ({ employeeId: 20 + i, employeeCode: `X${i}`, employeeName: `Person ${i}`, campusName: 'Main Campus', leaveType: 'Casual Leave', halfDay: false, dayMode: 'FULL' as const, startDate: '2026-03-02', endDate: '2026-03-02', totalDays: 1 }));
+  const manyHtml = view(data({ leave: leaveData({ onLeave: many }) }));
+  assert.match(manyHtml, /and 3 more/);
+  assert.equal((manyHtml.match(/data-testid="onleave-preview"[\s\S]*?<\/ul>/)?.[0].match(/<li/g) ?? []).length, 6, 'five names and the "more" line');
+  assert.match(view(data({ leave: leaveData({ onLeave: [] }) })), /data-testid="onleave-preview"|Nobody\./);
+});
+
+test('the On leave tab lists who is away, with half-days and permissions explained', () => {
+  const html = view(data(), 'leave');
+  assert.equal((html.match(/data-testid="onleave-row"/g) ?? []).length, 2);
+  assert.match(html, /Bala Kumar[\s\S]*?Casual Leave[\s\S]*?02 Mar to 03 Mar/);
+  assert.match(html, /Chitra Devi[\s\S]*?Sick Leave[\s\S]*?First half[\s\S]*?Today only/);
+  assert.match(html, /1 away for the whole day, 1 on a half-day/);
+  assert.match(html, /Only decisions count/);
+  assert.match(html, /Permission today/);
+  assert.equal((html.match(/data-testid="permission-row"/g) ?? []).length, 1);
+  assert.match(html, /Dev Anand[\s\S]*?10:00 AM to 12:00 PM[\s\S]*?Away now[\s\S]*?Doctor appointment/, 'it is 11:00 in India, inside the permission');
+  const later = view(data({ serverTime: '2026-03-02T09:30:00Z' }), 'leave');                  // 15:00 IST
+  assert.ok(!/Away now/.test(later), 'after the permission ended');
+  assert.match(view(data({ leave: leaveData({ onLeave: [], permissionsToday: [] }) }), 'leave'), /Nobody is on approved leave today[\s\S]*?No approved permissions today/);
+});
+
+test('the campus table gains an On leave column and a small bar with the check-in rate', () => {
+  const html = view(data());
+  assert.match(html, /<th[^>]*>On leave<\/th>/);
+  assert.match(html, /Main Campus[\s\S]*?>30<[\s\S]*?>27<[\s\S]*?>2<[\s\S]*?>3<[\s\S]*?>1<[\s\S]*?90%/, '27 of 30 checked in');
+  assert.match(html, /North Campus[\s\S]*?70%/, '14 of 20');
+  assert.match(html, /aria-label="90% checked in"/);
 });

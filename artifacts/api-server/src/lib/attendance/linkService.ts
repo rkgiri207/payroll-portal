@@ -9,6 +9,7 @@ import { flushOutbox, type ServiceDeps } from './attendanceService';
 import { loadSettings } from './settings';
 import { evaluatePunctuality, pickShift } from './shift';
 import { decodeSelfie, type SelfieStorage } from './selfieStorage';
+import { findAcademicYearForDate, isOutsideAcademicYear } from '../leave/academicYear';
 import { istParts } from './time';
 import { hashToken, isTokenShape } from './token';
 import {
@@ -231,11 +232,12 @@ export async function submitSelfie(
   const image = decodeSelfie(input.image);
   if (!image) return { http: 400, body: { ok: false, state: 'INVALID_IMAGE' } };
 
-  const [campus, employee, settings, verified] = await Promise.all([
+  const [campus, employee, settings, verified, yearLookup] = await Promise.all([
     getCampus(deps.pool, record.campusId),
     getEmployeeContact(deps.pool, record.employeeId),
     loadSettings(deps.pool),
     getVerifiedLocation(deps.pool, record.id),
+    findAcademicYearForDate(deps.pool, ist.workDate),
   ]);
   if (!campus || !employee || !employee.whatsapp) return closed('NOT_FOUND');
   if (!verified) return { http: 409, body: { ok: false, state: 'LOCATION_REQUIRED' } };
@@ -265,6 +267,7 @@ export async function submitSelfie(
         workDate: ist.workDate, punctuality, lateMinutes,
         shift: shift ? { loginTime: shift.loginTime, logoutTime: shift.logoutTime, graceMinutes: shift.graceMinutes } : null,
         gps: verified, selfiePath, tokenId: record.id, serverTs: now,
+        outsideAcademicYear: isOutsideAcademicYear(yearLookup),
       },
       async (q, saved) => {
         await queueEventAlerts(q, {

@@ -3,9 +3,11 @@ import { Link, useLocation } from "wouter"
 import { 
   Building2,
   Banknote,
+  CalendarDays,
   ChevronDown,
   ClipboardCheck,
-  FileText, 
+  ClipboardList,
+  FileText,
   Settings, 
   LogOut,
   LayoutDashboard,
@@ -14,6 +16,7 @@ import {
   Monitor,
   Moon,
   Palette,
+  Scale,
   Sun,
 } from "lucide-react"
 import { useTheme } from "next-themes"
@@ -58,6 +61,9 @@ export function LayoutShell({ children }: { children: ReactNode }) {
         ...NAV_ITEMS,
         { href: "/attendance", label: "Attendance", icon: ClipboardCheck },
         { href: "/attendance/setup", label: "Attendance Setup", icon: Settings },
+        { href: "/leave/calendar", label: "Holiday Calendar", icon: CalendarDays },
+        { href: "/leave/requests", label: "Leave Requests", icon: ClipboardList },
+        { href: "/leave/policies", label: "Leave Policies", icon: Scale },
       ]
     : NAV_ITEMS
   

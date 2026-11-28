@@ -160,12 +160,13 @@ function DetailsSection({ employee, onSaved }: { employee: EmployeeRow; onSaved(
   const [designation, setDesignation] = useState(employee.designation ?? '');
   const [branch, setBranch] = useState(employee.branch ?? '');
   const [mobile, setMobile] = useState(employee.mobileNumber ?? '');
+  const [joining, setJoining] = useState(employee.joiningDate ?? '');
   const [active, setActive] = useState(employee.status === 'ACTIVE');
   const [error, setError] = useState<string | null>(null);
 
   const save = useMutation({
     mutationFn: async () => {
-      await updateEmployee(employee.id, { employeeName: name, designation: designation || null, branch: branch || null, mobileNumber: mobile || null });
+      await updateEmployee(employee.id, { employeeName: name, designation: designation || null, branch: branch || null, mobileNumber: mobile || null, joiningDate: joining || null });
       if ((employee.status === 'ACTIVE') !== active) {
         const response = await fetch(`/api/employees/${employee.id}/status`, {
           method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' },
@@ -186,6 +187,13 @@ function DetailsSection({ employee, onSaved }: { employee: EmployeeRow; onSaved(
         <div className="space-y-1.5"><Label htmlFor="d-designation">Designation</Label><Input id="d-designation" value={designation} onChange={e => setDesignation(e.target.value)} /></div>
         <div className="space-y-1.5"><Label htmlFor="d-branch">Branch name used in payroll</Label><Input id="d-branch" value={branch} onChange={e => setBranch(e.target.value)} /></div>
         <div className="space-y-1.5 sm:col-span-2"><Label htmlFor="d-mobile">Mobile number</Label><Input id="d-mobile" inputMode="tel" value={mobile} onChange={e => setMobile(e.target.value)} /></div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="d-joining">Joining date</Label>
+          <Input id="d-joining" type="date" value={joining} onChange={e => setJoining(e.target.value)} className="max-w-48" />
+          <p className="text-xs text-muted-foreground">
+            Monthly leave starts the month after this date. Without it, no leave is credited.{employee.joiningDate && joining !== employee.joiningDate ? ' Changing an existing date can change leave balances.' : ''}
+          </p>
+        </div>
       </div>
       <div className="flex items-center gap-3">
         <Switch id="d-active" checked={active} onCheckedChange={setActive} />
@@ -203,10 +211,11 @@ function RegistrationSection({ employee, onSaved }: { employee: EmployeeRow; onS
   const { toast } = useToast();
   const [whatsapp, setWhatsapp] = useState(employee.whatsapp ? employee.whatsapp.replace(/^91/, '') : '');
   const [applicable, setApplicable] = useState(employee.attendanceApplicable);
+  const [vacations, setVacations] = useState(employee.reportsDuringVacations);
   const [error, setError] = useState<string | null>(null);
 
   const save = useMutation({
-    mutationFn: () => adminPut(`/employees/${employee.id}/registration`, { whatsapp, attendanceApplicable: applicable }),
+    mutationFn: () => adminPut(`/employees/${employee.id}/registration`, { whatsapp, attendanceApplicable: applicable, reportsDuringVacations: vacations }),
     onSuccess: () => { toast({ title: 'Attendance registration saved' }); onSaved(); },
     onError: e => setError(errorText(e)),
   });
@@ -223,6 +232,16 @@ function RegistrationSection({ employee, onSaved }: { employee: EmployeeRow; onS
       <div className="flex items-center gap-3">
         <Switch id="r-applicable" checked={applicable} onCheckedChange={setApplicable} />
         <Label htmlFor="r-applicable">This employee marks attendance (shown as expected, and as unmarked if no check-in)</Label>
+      </div>
+      <div className="flex items-start gap-3">
+        <Switch id="r-vacations" checked={vacations} onCheckedChange={setVacations} />
+        <div>
+          <Label htmlFor="r-vacations">Works during school vacations</Label>
+          <p className="text-xs text-muted-foreground">
+            When on, a school vacation is a normal working day for this employee: they are expected to check in, and vacation days count as leave days if they apply for leave.
+            Public holidays and weekly offs still apply to everyone.
+          </p>
+        </div>
       </div>
       <Problem text={error} />
       <Button type="button" onClick={() => { setError(null); save.mutate(); }} disabled={save.isPending}>

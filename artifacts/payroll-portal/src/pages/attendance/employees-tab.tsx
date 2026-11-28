@@ -93,7 +93,7 @@ export function EmployeesTab() {
                       {e.activeTemporary > 0 && <span className="ml-2 text-xs text-muted-foreground">+{e.activeTemporary} temporary</span>}
                     </TableCell>
                     <TableCell>{e.whatsapp ? <span className="tabular-nums">{formatWhatsapp(e.whatsapp)}</span> : <Badge variant="destructive">Not registered</Badge>}</TableCell>
-                    <TableCell>{e.attendanceApplicable ? <Badge>On</Badge> : <Badge variant="secondary">Off</Badge>}</TableCell>
+                    <TableCell>{e.attendanceApplicable ? <Badge>On</Badge> : <Badge variant="secondary">Off</Badge>}{!e.joiningDate && <Badge variant="destructive" className="ml-1" title="No joining date: no leave is credited">No joining date</Badge>}{e.reportsDuringVacations && <Badge variant="outline" className="ml-1" title="Works during school vacations">Vacations</Badge>}</TableCell>
                     <TableCell>
                       <Button variant="outline" size="sm" onClick={() => setEditing(e)}><Settings2 className="mr-2 h-4 w-4" />Set up</Button>
                     </TableCell>

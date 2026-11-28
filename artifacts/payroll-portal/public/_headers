@@ -10,3 +10,28 @@
   Referrer-Policy: no-referrer
   X-Robots-Tag: noindex, nofollow
   Permissions-Policy: geolocation=(self), camera=(self), microphone=()
+
+# The leave link carries a one-time token: never cache it, never leak it in a Referer header,
+# keep it out of search engines, and allow no camera, microphone or location on this page.
+/l/*
+  Cache-Control: no-store
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+  Permissions-Policy: geolocation=(), camera=(), microphone=()
+/leave.html
+  Cache-Control: no-store
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+  Permissions-Policy: geolocation=(), camera=(), microphone=()
+
+# The permission link carries a one-time token: same protections as the leave link.
+/p/*
+  Cache-Control: no-store
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+  Permissions-Policy: geolocation=(), camera=(), microphone=()
+/permission.html
+  Cache-Control: no-store
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+  Permissions-Policy: geolocation=(), camera=(), microphone=()

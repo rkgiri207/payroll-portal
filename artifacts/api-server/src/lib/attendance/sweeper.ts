@@ -5,12 +5,15 @@ import { openException } from './exceptionStore';
 import { processOutbox, type ProcessSummary } from './outboxWorker';
 import { countActivitySince, findInsWithoutOut, getDaySummary } from './rosterStore';
 import { loadSettings, type AttendanceSettings } from './settings';
+import { runAccrualOncePerDay } from '../leave/accrualService';
 import { istParts, timeToMinutes, type IstParts } from './time';
 
 export interface SweepSummary {
   outbox: ProcessSummary;
   missingOutFlagged: number;
   digestQueued: boolean;
+  /** Set only on the one pass each day that runs the monthly leave accrual. */
+  accrual?: { credits: number; adjustments: number };
   /** Names of steps that failed (details are logged by the caller). A failed step never blocks the others. */
   failedSteps: string[];
 }
@@ -122,6 +125,12 @@ export async function runSweep(deps: ServiceDeps): Promise<SweepSummary> {
 
   try { summary.digestQueued = await maybeQueueDigest(deps, settings, ist); }
   catch { summary.failedSteps.push('digest'); }
+
+  // Monthly leave accrual: does its work once a day, and is safe to repeat.
+  try {
+    const accrued = await runAccrualOncePerDay(deps.pool, ist.workDate);
+    if (accrued) summary.accrual = { credits: accrued.creditsPosted, adjustments: accrued.adjustmentsPosted };
+  } catch { summary.failedSteps.push('leaveAccrual'); }
 
   try {
     // A few batches per pass; whatever is left is picked up on the next pass.

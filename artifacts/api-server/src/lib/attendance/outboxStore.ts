@@ -4,7 +4,8 @@ export type OutboxKind =
   | 'LINK' | 'CHECKIN_CONFIRM' | 'CHECKOUT_CONFIRM' | 'FAILED_VERIFICATION' | 'TOKEN_LOCKED'
   | 'HELP' | 'COMING_SOON' | 'CAMPUS_CHOICE'
   | 'DIRECTOR_CHECKIN' | 'DIRECTOR_CHECKOUT' | 'DIRECTOR_LATE' | 'DIRECTOR_EXCEPTION'
-  | 'DIRECTOR_MISSING_OUT' | 'DIRECTOR_DIGEST' | 'DIRECTOR_LEAVE_REQUEST' | 'DIRECTOR_PERMISSION_REQUEST';
+  | 'DIRECTOR_MISSING_OUT' | 'DIRECTOR_DIGEST' | 'DIRECTOR_LEAVE_REQUEST' | 'DIRECTOR_PERMISSION_REQUEST'
+  | 'LEAVE_INFO' | 'LEAVE_DECISION' | 'PERMISSION_DECISION' | 'DIRECTOR_INFO';
 
 export interface NewOutboxMessage {
   recipientType: 'DIRECTOR' | 'EMPLOYEE';
@@ -16,7 +17,7 @@ export interface NewOutboxMessage {
   deliveryMode: 'TEXT' | 'TEMPLATE';
   templateName?: string | null;
   templateLanguage?: string | null;
-  /** TEXT: { body }. TEMPLATE: { params: string[] }. Never contains selfies. */
+  /** TEXT: { body }. TEMPLATE: { params: string[], buttons?: string[] } (buttons = quick-reply payloads, in order). Never contains selfies. */
   payload: Record<string, unknown>;
   /** The same key can be queued only once, so repeated triggers never double-send. */
   idempotencyKey: string;

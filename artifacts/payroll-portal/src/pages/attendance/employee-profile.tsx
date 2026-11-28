@@ -30,6 +30,7 @@ export function ProfileView({ profile }: { profile: EmployeeProfile }) {
           <CardContent className="space-y-1 text-sm">
             <p>WhatsApp number: {profile.registration?.whatsapp ?? <span className="text-muted-foreground">Not registered</span>}</p>
             <p>Marks attendance: {profile.registration?.attendanceApplicable === false ? 'No' : 'Yes'}</p>
+            <p>Works during school vacations: {profile.registration?.reportsDuringVacations ? 'Yes' : 'No'}</p>
           </CardContent>
         </Card>
         <Card>

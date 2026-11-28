@@ -23,6 +23,7 @@ export async function resolveRole(q: Queryable, userId: number): Promise<Attenda
 /** Settings that only the Director may change (alerts and who receives them). */
 export const DIRECTOR_ONLY_SETTINGS: ReadonlySet<string> = new Set([
   'director_whatsapp_e164', 'alert_mode', 'digest_interval_minutes',
+  'leave_cap_per_campus_per_day',
 ]);
 
 export function canEditSetting(role: AttendanceRole, key: string): boolean {

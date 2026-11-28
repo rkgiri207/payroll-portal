@@ -211,7 +211,7 @@ export async function queueEmployeeText(
   q: Queryable,
   input: {
     employee: { id: number | null; whatsapp: string };
-    kind: 'FAILED_VERIFICATION' | 'TOKEN_LOCKED' | 'HELP' | 'COMING_SOON' | 'CAMPUS_CHOICE';
+    kind: 'FAILED_VERIFICATION' | 'TOKEN_LOCKED' | 'HELP' | 'COMING_SOON' | 'CAMPUS_CHOICE' | 'LEAVE_INFO';
     body: string;
     idempotencyKey: string;
   },

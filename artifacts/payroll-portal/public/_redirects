@@ -1,3 +1,7 @@
 # Employee attendance links open the small, separate attendance page (not the portal app).
 # Processed before netlify.toml rules, so the portal's catch-all does not take /a/* links.
 /a/*    /attendance.html    200
+# Employee leave-form links open the small, separate leave page.
+/l/*    /leave.html    200
+# Employee permission-form links open the small, separate permission page.
+/p/*    /permission.html    200

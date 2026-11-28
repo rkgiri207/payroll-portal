@@ -10,6 +10,8 @@ export interface InboundMessage {
   type: string;
   text: string | null;
   isGroup: boolean;
+  /** The payload of a tapped quick-reply button (for example LV:A:<id>), if the message is a button tap. */
+  buttonPayload?: string | null;
 }
 
 export interface InboundStatus {
@@ -47,12 +49,17 @@ export function extractInbound(body: unknown): { messages: InboundMessage[]; sta
           const from = digitsOnly(raw.from);
           if (!from || (ownNumber && from === ownNumber)) continue; // never react to our own number
           const textBody = isRecord(raw.text) && typeof raw.text.body === 'string' ? raw.text.body : null;
+          // A tap on a template quick-reply arrives as type 'button'; an interactive reply as type 'interactive'.
+          const buttonPayload = isRecord(raw.button) && typeof raw.button.payload === 'string' ? raw.button.payload.slice(0, 256)
+            : isRecord(raw.interactive) && isRecord(raw.interactive.button_reply) && typeof raw.interactive.button_reply.id === 'string'
+              ? raw.interactive.button_reply.id.slice(0, 256) : null;
           messages.push({
             id: raw.id,
             from,
             type: typeof raw.type === 'string' ? raw.type : 'unknown',
             text: textBody,
             isGroup: 'group_id' in raw,
+            ...(buttonPayload ? { buttonPayload } : {}),
           });
         }
       }

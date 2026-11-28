@@ -100,13 +100,17 @@ test('date and id helpers', () => {
 // ── Registration and assignments input ────────────────────────────────────────
 test('a WhatsApp number is normalised to the WhatsApp format, or cleared', () => {
   assert.deepEqual(validateRegistration({ whatsapp: '98491 36605', attendanceApplicable: true }),
-    { ok: true, value: { whatsapp: '919849136605', attendanceApplicable: true } });
+    { ok: true, value: { whatsapp: '919849136605', attendanceApplicable: true, reportsDuringVacations: null } });
   assert.deepEqual(validateRegistration({ whatsapp: '+91-9849136605', attendanceApplicable: false }),
-    { ok: true, value: { whatsapp: '919849136605', attendanceApplicable: false } });
+    { ok: true, value: { whatsapp: '919849136605', attendanceApplicable: false, reportsDuringVacations: null } });
   for (const blank of ['', '   ', null, undefined]) {
     assert.deepEqual(validateRegistration({ whatsapp: blank, attendanceApplicable: true }),
-      { ok: true, value: { whatsapp: null, attendanceApplicable: true } });
+      { ok: true, value: { whatsapp: null, attendanceApplicable: true, reportsDuringVacations: null } });
   }
+  // The vacation switch: true or false is kept; leaving it out leaves the saved value alone.
+  assert.deepEqual(validateRegistration({ whatsapp: '', attendanceApplicable: true, reportsDuringVacations: true }), { ok: true, value: { whatsapp: null, attendanceApplicable: true, reportsDuringVacations: true } });
+  assert.deepEqual(validateRegistration({ whatsapp: '', attendanceApplicable: true, reportsDuringVacations: false }), { ok: true, value: { whatsapp: null, attendanceApplicable: true, reportsDuringVacations: false } });
+  assert.ok(!validateRegistration({ whatsapp: '', attendanceApplicable: true, reportsDuringVacations: 'yes' }).ok);
   for (const body of [{ whatsapp: '12345', attendanceApplicable: true }, { whatsapp: 'abc', attendanceApplicable: true },
     { whatsapp: 98491, attendanceApplicable: true }, { whatsapp: '9849136605' }, null]) {
     assert.ok(!validateRegistration(body).ok, JSON.stringify(body));
@@ -208,17 +212,24 @@ test('shifts: a duplicate is refused, and only a shift that has not started can 
 });
 
 test('registration: a number already used by someone else is refused', async () => {
-  const input = { whatsapp: '919849136605', attendanceApplicable: true };
+  const input = { whatsapp: '919849136605', attendanceApplicable: true, reportsDuringVacations: null };
   const dup = new FakeDb()
     .on(/from attendance_employees where employee_id/, { rows: [] })
     .on(/insert into attendance_employees/, () => { throw uniqueViolation(); });
   assert.equal((await saveRegistration(dup, 7, input, 1) as { error: string }).error, 'That WhatsApp number is already registered to another employee');
 
   const db = new FakeDb()
-    .on(/from attendance_employees where employee_id/, { rows: [{ employee_id: 7, whatsapp_e164: '919849136605', attendance_applicable: true }] })
+    .on(/from attendance_employees where employee_id/, { rows: [{ employee_id: 7, whatsapp_e164: '919849136605', attendance_applicable: true, reports_during_vacations: false }] })
     .on(/insert into attendance_employees/, { rowCount: 1 });
   const saved = await saveRegistration(db, 7, input, 1);
   assert.ok(saved.ok && saved.value.after.whatsapp === '919849136605');
+  const insert = db.where(/insert into attendance_employees/)[0];
+  assert.equal(insert.params[4], null, 'no vacation choice sent: the saved value is kept');
+  assert.match(insert.text, /reports_during_vacations = coalesce\(\$5::boolean, attendance_employees\.reports_during_vacations\)/);
+  const withFlag = new FakeDb().on(/from attendance_employees where employee_id/, { rows: [{ employee_id: 7, whatsapp_e164: null, attendance_applicable: true, reports_during_vacations: true }] }).on(/insert into attendance_employees/, { rowCount: 1 });
+  const flagged = await saveRegistration(withFlag, 7, { ...input, reportsDuringVacations: true }, 1);
+  assert.ok(flagged.ok && flagged.value.after.reportsDuringVacations === true);
+  assert.equal(withFlag.where(/insert into attendance_employees/)[0].params[4], true);
 });
 
 const assignmentView = (over: Record<string, unknown>) => ({

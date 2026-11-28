@@ -22,6 +22,8 @@ import { maybeSweep } from '../lib/attendance/sweeper';
 import { addDays, istParts } from '../lib/attendance/time';
 import { maskPhone, toWhatsAppNumber } from '../lib/attendance/webhookSecurity';
 import { loadWhatsAppConfig } from '../lib/attendance/whatsappSender';
+import leaveAdminRouter from './leaveAdmin';
+import { countPendingApprovals, getDayNotice, listOnLeaveToday, listPermissionsToday, upcomingLeave } from '../lib/leave/leaveDashboard';
 
 /**
  * Admin endpoints for the attendance setup screens and the live dashboard. Every request needs
@@ -52,6 +54,8 @@ async function requireAttendanceRole(req: Request, res: Response, next: NextFunc
 }
 
 router.use(requireAuth, requireAttendanceRole);
+// Leave screens (calendar, policies, requests). They inherit the checks above.
+router.use('/leave', leaveAdminRouter);
 
 /** Run a handler; unexpected errors become a plain 500 and are logged without personal data. */
 const handle = (fn: (req: Request, res: Response) => Promise<void>) => async (req: Request, res: Response): Promise<void> => {
@@ -272,9 +276,11 @@ router.get('/dashboard', handle(async (_req, res) => {
   }
 
   const reviewSince = addDays(ist.workDate, -14);
-  const [settings, summary, campuses, feed, alertProblems, pendingReview] = await Promise.all([
+  const [settings, summary, campuses, feed, alertProblems, pendingReview, onLeave, permissionsToday, pending, upcoming, notice] = await Promise.all([
     loadSettings(db), getDaySummary(db, ist.workDate, ist.weekday), getCampusSummaries(db, ist.workDate, ist.weekday),
     getTodayFeed(db, ist.workDate), listAlertProblems(db), countPendingReview(db, reviewSince),
+    listOnLeaveToday(db, ist.workDate), listPermissionsToday(db, ist.workDate), countPendingApprovals(db),
+    upcomingLeave(db, ist.workDate, 7), getDayNotice(db, ist.workDate),
   ]);
 
   const warnings: string[] = [];
@@ -286,6 +292,8 @@ router.get('/dashboard', handle(async (_req, res) => {
     workDate: ist.workDate, serverTime: now.toISOString(),
     summary: { ...summary, pendingReview }, campuses, feed, alertProblems, warnings,
     alertMode: settings.alertMode,
+    // Leave and permission, from decisions only: approved is "on leave"; pending is just a number waiting for the Director.
+    leave: { onLeave, permissionsToday, pendingLeave: pending.leave, pendingPermission: pending.permission, upcoming, notice },
   });
 }));
 

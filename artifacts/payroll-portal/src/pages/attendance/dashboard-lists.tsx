@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { adminGet, adminPatch, type AlertProblem, type ExceptionRow, type FeedEvent, type UnmarkedEmployee } from './api';
+import { adminGet, adminPatch, type AlertProblem, type ExceptionRow, type FeedEvent, type OnLeaveItem, type PermissionToday, type UnmarkedEmployee } from './api';
+import { dayMonth, permissionActive, permissionRange } from './dashboard-stats';
 import {
   alertKindLabel, describeAlert, describeEvent, describeGps, describeReview, exceptionLabel, formatDay, formatTime,
   timeAgo, type Label as ToneLabel,
@@ -300,6 +301,71 @@ export function AlertProblems({ items }: { items: AlertProblem[] }) {
               <TableCell>{p.recipientType === 'DIRECTOR' ? 'Director' : 'Employee'}</TableCell>
               <TableCell>{p.status === 'FAILED' ? <Badge variant="destructive">Failed</Badge> : <Badge variant="outline">Retrying ({p.attempts})</Badge>}</TableCell>
               <TableCell className="max-w-xs text-xs text-muted-foreground">{p.lastError ?? '—'}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+// ── Leave and permission today (data comes with the dashboard, so these need no request of their own) ──
+
+export function OnLeaveList({ items }: { items: OnLeaveItem[] }) {
+  if (items.length === 0) return <Empty>Nobody is on approved leave today.</Empty>;
+  const away = items.filter(i => !i.halfDay).length;
+  return (
+    <>
+      <p className="mb-3 text-sm text-muted-foreground">
+        Approved leave for today: {away} away for the whole day{items.length > away ? `, ${items.length - away} on a half-day (still expected to check in for the rest of the day)` : ''}.
+        Only decisions count; requests still waiting for the Director are not shown here.
+      </p>
+      <div className="overflow-x-auto">
+        <Table>
+          <TableHeader><TableRow><TableHead>Employee</TableHead><TableHead>Campus</TableHead><TableHead>Leave</TableHead><TableHead>Dates</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {items.map(i => (
+              <TableRow key={`${i.employeeId}:${i.startDate}`} data-testid="onleave-row">
+                <TableCell>
+                  <Link href={`/attendance/employees/${i.employeeId}`} className="font-medium hover:underline">{i.employeeName}</Link>
+                  <span className="ml-2 text-xs text-muted-foreground">{i.employeeCode}</span>
+                </TableCell>
+                <TableCell>{i.campusName}</TableCell>
+                <TableCell>
+                  {i.leaveType}
+                  {i.halfDay && <Badge variant="outline" className="ml-2">{i.dayMode === 'FIRST_HALF' ? 'First half' : 'Second half'}</Badge>}
+                </TableCell>
+                <TableCell className="whitespace-nowrap text-sm">
+                  {i.startDate === i.endDate ? 'Today only' : `${dayMonth(i.startDate)} to ${dayMonth(i.endDate)}`}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </>
+  );
+}
+
+export function PermissionsList({ items, nowMinutes }: { items: PermissionToday[]; nowMinutes: number }) {
+  if (items.length === 0) return <Empty>No approved permissions today.</Empty>;
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader><TableRow><TableHead>Employee</TableHead><TableHead>Campus</TableHead><TableHead>Time</TableHead><TableHead>Reason</TableHead></TableRow></TableHeader>
+        <TableBody>
+          {items.map(p => (
+            <TableRow key={`${p.employeeId}:${p.startTime}`} data-testid="permission-row">
+              <TableCell>
+                <Link href={`/attendance/employees/${p.employeeId}`} className="font-medium hover:underline">{p.employeeName}</Link>
+                <span className="ml-2 text-xs text-muted-foreground">{p.employeeCode}</span>
+              </TableCell>
+              <TableCell>{p.campusName}</TableCell>
+              <TableCell className="whitespace-nowrap">
+                {permissionRange(p)}
+                {permissionActive(p, nowMinutes) && <Badge className="ml-2">Away now</Badge>}
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground">{p.reason}</TableCell>
             </TableRow>
           ))}
         </TableBody>

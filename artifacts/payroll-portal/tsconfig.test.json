@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["src/attendance-link/**/*", "src/pages/attendance/**/*"],
+  "include": ["src/attendance-link/**/*", "src/leave-form/**/*", "src/permission-form/**/*", "src/pages/attendance/**/*"],
   "exclude": ["node_modules", "dist"],
   "compilerOptions": {
     "jsx": "react-jsx",

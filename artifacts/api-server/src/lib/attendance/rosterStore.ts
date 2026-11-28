@@ -1,4 +1,5 @@
 import type { Queryable } from './db';
+import { EXPECTED_BASE, EXPECTED_FILTER, ON_FULL_LEAVE } from './expectedSql';
 
 export interface DaySummary {
   /** Employees expected to attend today (see the roster rules below). */
@@ -7,6 +8,8 @@ export interface DaySummary {
   late: number;
   /** Expected employees with no valid IN today. They are UNMARKED, never "absent". */
   unmarked: number;
+  /** Employees who would be expected today but are on approved leave for the whole day. */
+  onLeave: number;
   openExceptions: number;
 }
 
@@ -15,24 +18,28 @@ export interface DaySummary {
  * switched on who has an assignment covering the date at an active campus whose shift runs on
  * that weekday. Nobody is ever marked absent automatically.
  *
- * Known simplification: a temporary REPLACE assignment is not used to hide the primary campus
- * here, and approved leave / holidays are not modelled until later phases.
+ * Approved full-day leave and confirmed holidays, weekly offs and vacations are respected (see
+ * expectedSql.ts). Known simplification: a temporary REPLACE assignment is not used to hide the
+ * primary campus here.
  */
 export async function getDaySummary(q: Queryable, workDate: string, weekday: number): Promise<DaySummary> {
   const { rows } = await q.query<{
-    expected: number; present: number; late: number; unmarked: number; open_exceptions: number;
+    expected: number; present: number; late: number; unmarked: number; on_leave: number; open_exceptions: number;
   }>(
     `with expected as (
        select distinct ae.employee_id
          from attendance_employees ae
-         join employees e on e.id = ae.employee_id and e.status = 'ACTIVE'
+         join employees e on e.id = ae.employee_id
          join employee_campus_assignments a on a.employee_id = ae.employee_id
-              and a.start_date <= $1::date and (a.end_date is null or a.end_date >= $1::date)
          join campuses c on c.id = a.campus_id and c.is_active
-        where ae.attendance_applicable
-          and exists (
-            select 1 from campus_shifts s
-             where s.campus_id = c.id and s.effective_from <= $1::date and $2::smallint = any(s.weekdays))
+        where ${EXPECTED_FILTER}
+     ), on_leave as (
+       select distinct ae.employee_id
+         from attendance_employees ae
+         join employees e on e.id = ae.employee_id
+         join employee_campus_assignments a on a.employee_id = ae.employee_id
+         join campuses c on c.id = a.campus_id and c.is_active
+        where ${EXPECTED_BASE} and ${ON_FULL_LEAVE}
      ), ins as (
        select employee_id, punctuality from attendance_events
         where work_date = $1::date and event_type = 'IN' and is_valid
@@ -42,6 +49,7 @@ export async function getDaySummary(q: Queryable, workDate: string, weekday: num
             (select count(*) from ins where punctuality = 'LATE')::int as late,
             (select count(*) from expected x
               where not exists (select 1 from ins i where i.employee_id = x.employee_id))::int as unmarked,
+            (select count(*) from on_leave)::int as on_leave,
             (select count(*) from attendance_exceptions where status = 'OPEN')::int as open_exceptions`,
     [workDate, weekday],
   );
@@ -51,6 +59,7 @@ export async function getDaySummary(q: Queryable, workDate: string, weekday: num
     present: r?.present ?? 0,
     late: r?.late ?? 0,
     unmarked: r?.unmarked ?? 0,
+    onLeave: r?.on_leave ?? 0,
     openExceptions: r?.open_exceptions ?? 0,
   };
 }

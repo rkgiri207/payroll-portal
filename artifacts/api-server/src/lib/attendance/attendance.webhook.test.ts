@@ -143,18 +143,17 @@ test('a duplicate delivery of the same message is processed once', async () => {
   assert.equal(db.where(/insert into attendance_tokens/).length, 0);
 });
 
-test('HELP lists the commands; LEAVE, PERMISSION and BALANCE say coming soon', async () => {
+test('HELP lists every command, and none of them says "coming soon" any more', async () => {
   const help = build();
   await handleInboundMessage(help.deps, text('help'));
   assert.equal(outbox(help.db)[0].kind, 'HELP');
-  assert.match(outbox(help.db)[0].payload.body ?? '', /IN - mark your check-in/);
-
-  for (const command of ['leave', 'PERMISSION', 'Balance']) {
-    const soon = build();
-    await handleInboundMessage(soon.deps, text(command));
-    assert.equal(outbox(soon.db)[0].kind, 'COMING_SOON', command);
-    assert.equal(soon.db.where(/insert into attendance_tokens/).length, 0);
-  }
+  const body = outbox(help.db)[0].payload.body ?? '';
+  assert.match(body, /IN - mark your check-in/);
+  assert.match(body, /OUT - mark your check-out/);
+  assert.match(body, /LEAVE - apply for leave/);
+  assert.match(body, /PERMISSION - ask for a short absence/);
+  assert.match(body, /BALANCE - see your leave balance/);
+  assert.ok(!/coming soon/i.test(body));
 });
 
 test('IN with one campus creates a one-time link and queues it', async () => {

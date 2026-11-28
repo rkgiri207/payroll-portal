@@ -70,15 +70,25 @@ function buildRequestBody(message: OutboxMessage): Record<string, unknown> {
   if (!message.templateName || !Array.isArray(params) || params.some(p => typeof p !== 'string')) {
     throw new SendError('Template message is missing its name or parameters', 'INVALID_PAYLOAD', false);
   }
+  // Quick-reply buttons (for example Approve / Reject): each carries a payload that comes back when tapped.
+  const rawButtons = message.payload.buttons;
+  if (rawButtons !== undefined && (!Array.isArray(rawButtons) || rawButtons.length > 3
+    || rawButtons.some(b => typeof b !== 'string' || b.length === 0 || b.length > 256))) {
+    throw new SendError('Template buttons are not valid', 'INVALID_PAYLOAD', false);
+  }
+  const buttons = (rawButtons as string[] | undefined) ?? [];
   return {
     ...base,
     type: 'template',
     template: {
       name: message.templateName,
       language: { code: message.templateLanguage || 'en' },
-      components: params.length
-        ? [{ type: 'body', parameters: params.map(text => ({ type: 'text', text })) }]
-        : [],
+      components: [
+        ...(params.length ? [{ type: 'body', parameters: params.map(text => ({ type: 'text', text })) }] : []),
+        ...buttons.map((payload, index) => ({
+          type: 'button', sub_type: 'quick_reply', index: String(index), parameters: [{ type: 'payload', payload }],
+        })),
+      ],
     },
   };
 }

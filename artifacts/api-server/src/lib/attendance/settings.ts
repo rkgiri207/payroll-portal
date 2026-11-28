@@ -7,15 +7,24 @@ export interface AttendanceSettings {
   defaultGeofenceRadiusM: number;
   requiredGpsAccuracyM: number;
   tokenTtlMinutes: number;
+  /** How long a leave or permission form link works. */
+  formTokenTtlMinutes: number;
+  /** Longest single permission in minutes, or null for no limit. */
+  permissionMaxMinutes: number | null;
+  /** Most permissions per employee per calendar month, or null for no limit. */
+  permissionMaxPerMonth: number | null;
   maxFailedAttempts: number;
   missingOutAfterMinutes: number;
   selfieRetentionDays: number;
+  allowOutsideAcademicYear: boolean;
   directorWhatsapp: string | null;
   alertMode: AlertMode;
   digestIntervalMinutes: number;
   linkBaseUrl: string;
   templateLanguage: string;
   templates: { checkin: string; checkout: string; late: string; exception: string; missingOut: string; digest: string };
+  /** Template names for leave and permission messages (editable in the app). */
+  leaveTemplates: { leaveRequest: string; permissionRequest: string; leaveDecision: string; permissionDecision: string };
 }
 
 /** Fallbacks used only if a row is missing or invalid; the real values live in the database. */
@@ -24,9 +33,13 @@ export const SETTING_DEFAULTS: AttendanceSettings = {
   defaultGeofenceRadiusM: 25,
   requiredGpsAccuracyM: 10,
   tokenTtlMinutes: 5,
+  formTokenTtlMinutes: 30,
+  permissionMaxMinutes: null,
+  permissionMaxPerMonth: null,
   maxFailedAttempts: 3,
   missingOutAfterMinutes: 60,
   selfieRetentionDays: 90,
+  allowOutsideAcademicYear: false,
   directorWhatsapp: null,
   alertMode: 'individual',
   digestIntervalMinutes: 60,
@@ -39,6 +52,10 @@ export const SETTING_DEFAULTS: AttendanceSettings = {
     exception: 'attendance_exception',
     missingOut: 'attendance_missing_out',
     digest: 'attendance_digest',
+  },
+  leaveTemplates: {
+    leaveRequest: 'leave_request', permissionRequest: 'permission_request',
+    leaveDecision: 'leave_decision', permissionDecision: 'permission_decision',
   },
 };
 
@@ -66,6 +83,7 @@ export const SETTING_RULES: Record<string, Rule> = {
   missing_out_after_minutes: intBetween(0, 720),
   selfie_retention_days: intBetween(1, 3650),
   digest_interval_minutes: intBetween(5, 1440),
+  allow_attendance_outside_academic_year: { validate: v => typeof v === 'boolean', description: 'on or off' },
   director_whatsapp_e164: {
     validate: v => v === null || (typeof v === 'string' && /^[1-9][0-9]{7,14}$/.test(v)),
     description: 'digits with country code (e.g. 919876543210), or empty',
@@ -97,6 +115,23 @@ export const SETTING_RULES: Record<string, Rule> = {
   template_exception: templateName,
   template_missing_out: templateName,
   template_digest: templateName,
+  // Leave and permission settings (migration 07). The cap is read by the database on every
+  // request, so a change here takes effect immediately.
+  leave_cap_per_campus_per_day: intBetween(1, 50),
+  form_token_ttl_minutes: intBetween(5, 1440),
+  permission_max_minutes: {
+    // 5-minute steps, up to 8 hours; the same choices the Settings dropdown offers.
+    validate: v => v === null || (typeof v === 'number' && Number.isInteger(v) && v >= 5 && v <= 480 && v % 5 === 0),
+    description: 'a number of minutes in steps of 5, from 5 to 480, or empty for no limit',
+  },
+  permission_max_per_month: {
+    validate: v => v === null || (typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 31),
+    description: 'a whole number from 1 to 31, or empty for no limit',
+  },
+  template_leave_request: templateName,
+  template_permission_request: templateName,
+  template_leave_decision: templateName,
+  template_permission_decision: templateName,
 };
 
 /** A short hint for the admin screen about what a setting accepts. */
@@ -125,9 +160,13 @@ export function parseSettings(rows: { key: string; value: unknown }[]): Attendan
     defaultGeofenceRadiusM: pick('default_geofence_radius_m', d.defaultGeofenceRadiusM),
     requiredGpsAccuracyM: pick('required_gps_accuracy_m', d.requiredGpsAccuracyM),
     tokenTtlMinutes: pick('token_ttl_minutes', d.tokenTtlMinutes),
+    formTokenTtlMinutes: pick('form_token_ttl_minutes', d.formTokenTtlMinutes),
+    permissionMaxMinutes: pick<number | null>('permission_max_minutes', d.permissionMaxMinutes),
+    permissionMaxPerMonth: pick<number | null>('permission_max_per_month', d.permissionMaxPerMonth),
     maxFailedAttempts: pick('max_failed_attempts', d.maxFailedAttempts),
     missingOutAfterMinutes: pick('missing_out_after_minutes', d.missingOutAfterMinutes),
     selfieRetentionDays: pick('selfie_retention_days', d.selfieRetentionDays),
+    allowOutsideAcademicYear: pick('allow_attendance_outside_academic_year', d.allowOutsideAcademicYear),
     directorWhatsapp: pick<string | null>('director_whatsapp_e164', d.directorWhatsapp),
     alertMode: pick<AlertMode>('alert_mode', d.alertMode),
     digestIntervalMinutes: pick('digest_interval_minutes', d.digestIntervalMinutes),
@@ -140,6 +179,12 @@ export function parseSettings(rows: { key: string; value: unknown }[]): Attendan
       exception: pick('template_exception', d.templates.exception),
       missingOut: pick('template_missing_out', d.templates.missingOut),
       digest: pick('template_digest', d.templates.digest),
+    },
+    leaveTemplates: {
+      leaveRequest: pick('template_leave_request', d.leaveTemplates.leaveRequest),
+      permissionRequest: pick('template_permission_request', d.leaveTemplates.permissionRequest),
+      leaveDecision: pick('template_leave_decision', d.leaveTemplates.leaveDecision),
+      permissionDecision: pick('template_permission_decision', d.leaveTemplates.permissionDecision),
     },
   };
 }
